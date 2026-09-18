@@ -276,3 +276,57 @@ button.ghost:disabled { opacity: 0.45; cursor: default; }
   .rail { border-right: 0; border-bottom: 1px solid var(--rule); }
   .steps { flex-direction: row; flex-wrap: wrap; }
 }
+
+.logo { display: grid; place-items: center; width: 34px; height: 34px; color: var(--ink); flex: none; }
+.logo svg { width: 34px; height: 34px; }
+
+button.wide { width: 100%; }
+button.icon { padding: 2px 10px; font-size: 16px; line-height: 1.2; }
+
+.drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: 360px;
+  max-width: 92vw;
+  overflow: auto;
+  padding: calc(var(--step) * 3);
+  border-left: 1px solid var(--rule);
+  background: var(--sheet);
+  z-index: 20;
+}
+.drawer-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--step); }
+.drawer-head h2 { margin: 0; font-family: var(--serif); font-size: 20px; }
+.drawer h3 { font-family: var(--serif); font-size: 16px; margin: calc(var(--step) * 2) 0 0; }
+.drawer hr { border: 0; border-top: 1px solid var(--rule); margin: calc(var(--step) * 3) 0 calc(var(--step) * 2); }
+
+.field { display: flex; flex-direction: column; gap: 4px; margin: calc(var(--step) * 1.5) 0; font-size: 12px; color: var(--ink-faint); }
+.field input, .field select {
+  padding: 8px 9px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  font-size: 13px;
+  color: var(--ink);
+}
+
+[data-theme="dark"] {
+  --paper: #14151a;
+  --sheet: #1c1e24;
+  --ink: #e9e6e0;
+  --ink-soft: #aaa69d;
+  --ink-faint: #7d7970;
+  --rule: #2a2d35;
+  --rule-strong: #3a3e49;
+  --accent: #d0703c;
+  --accent-ink: #1b1207;
+  --high: #e07a68;
+  --medium: #d6a352;
+  --low: #9b9d90;
+}
+[data-theme="dark"] .rail { background: linear-gradient(180deg, #191b21, var(--paper)); }
+[data-theme="dark"] .notice { background: #2a1c1a; }
+[data-theme="dark"] .step:hover:not(:disabled) { background: rgba(255, 255, 255, 0.04); }
+[data-theme="dark"] .chip { background: var(--paper); }
+[data-theme="dark"] #prompt,
+[data-theme="dark"] .draft,
+[data-theme="dark"] .q-input { background: var(--sheet); }

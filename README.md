@@ -6,7 +6,7 @@ optional tkinter window, using **free LLM providers only**. It works with **no A
 setup** out of the box, and can also use a local Ollama, the free tiers of Gemini, Groq and
 OpenRouter, or a deterministic no-LLM mode.
 
-Пошаговый туториал по запуску на русском — в разделе [«Как запустить (RU)»](#как-запустить-ru) ниже.
+Пошаговый туториал по запуску на русском - в разделе [«Как запустить (RU)»](#как-запустить-ru) ниже.
 
 ```
 $ promptwizard "write about our product"
@@ -44,7 +44,7 @@ Mode: LLM
 1. **Takes** a prompt (argument, file, stdin, or the interactive editor).
 2. **Analyzes** it: clarity, structure, ambiguity, missing detail, weak phrasing, constraints,
    output format, audience, examples, scope, tone, context.
-3. **Asks** the clarifying questions — **all at once**, never one by one.
+3. **Asks** the clarifying questions - **all at once**, never one by one.
 4. **Rewrites** the prompt in the *language of the original prompt*, and explains every change in
    the *UI language*.
 
@@ -128,11 +128,11 @@ Without it `gui` still works and opens the browser. `gui --tk` keeps the older t
 | Provider | Kind | Key | Where to get it |
 |---|---|---|---|
 | `pollinations` | keyless community endpoint (**default**) | none | works immediately, no account |
-| `ollama` | local, no key by default | — | [ollama.com](https://ollama.com) — `ollama pull llama3.2` |
+| `ollama` | local, no key by default | - | [ollama.com](https://ollama.com) - `ollama pull llama3.2` |
 | `gemini` | Google AI free tier | `GEMINI_API_KEY` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
 | `groq` | free tier | `GROQ_API_KEY` | [console.groq.com/keys](https://console.groq.com/keys) |
 | `openrouter` | models with the `:free` suffix | `OPENROUTER_API_KEY` | [openrouter.ai/keys](https://openrouter.ai/keys) |
-| `offline` | deterministic, no LLM at all | — | built in |
+| `offline` | deterministic, no LLM at all | - | built in |
 | `openai_compatible` | any other free OpenAI-compatible tier | `OPENAI_API_KEY` | your provider |
 
 ### No keys at all
@@ -164,8 +164,8 @@ promptwizard --provider openai_compatible --base-url https://api.cerebras.ai/v1 
 promptwizard --provider offline "..."          # rules only, no model call
 ```
 
-`promptwizard providers` prints every configured provider, whether it is reachable, and — when the
-provider exposes it — the models your key can use. **If the provider is unreachable, the run does not
+`promptwizard providers` prints every configured provider, whether it is reachable, and - when the
+provider exposes it - the models your key can use. **If the provider is unreachable, the run does not
 fail**: the affected step falls back to the deterministic template, and the reason is shown.
 
 Free-tier model ids change often, so they are **not** scattered through the code: they live in one
@@ -222,9 +222,9 @@ Relevant environment variables: `PROMPTWIZARD_HOME`, `PROMPTWIZARD_LANG`, `PROMP
 
 Two independent languages:
 
-- **UI language** — `--lang ru|en`, `"lang"` in the config, or the switch inside the GUI — decides
+- **UI language** - `--lang ru|en`, `"lang"` in the config, or the switch inside the GUI - decides
   the menus, the questions, the issue wording and the explanations.
-- **Prompt language** — detected from your prompt — decides the language of the rewritten prompt,
+- **Prompt language** - detected from your prompt - decides the language of the rewritten prompt,
   because that text is fed to a model and has to match your material.
 
 A Russian prompt rewritten with `--lang en` still produces a Russian prompt, with English
@@ -232,7 +232,7 @@ explanations.
 
 ## Session history
 
-Every run is appended to `~/.promptwizard/sessions/sessions.jsonl` — one JSON object per line, so a
+Every run is appended to `~/.promptwizard/sessions/sessions.jsonl` - one JSON object per line, so a
 crashed run cannot corrupt earlier ones. `--no-save` skips it.
 
 ```bash
@@ -244,13 +244,18 @@ promptwizard sessions --json
 ## Build a standalone binary
 
 PyInstaller recipe: [`packaging/promptwizard.spec`](packaging/promptwizard.spec) (kept in the repo
-on purpose — it is the build recipe).
+on purpose - it is the build recipe). It produces two binaries:
+
+| Binary | What it is |
+|---|---|
+| `promptwizard-gui` | the windowed app: opens the interface, no console. Double-click this one. |
+| `promptwizard` | the console build, for the CLI |
 
 ```bash
-# Windows -> dist\promptwizard.exe
+# Windows -> dist\promptwizard-gui.exe and dist\promptwizard.exe
 packaging\build.bat
 
-# Linux / macOS -> dist/promptwizard
+# Linux / macOS -> dist/promptwizard-gui and dist/promptwizard
 ./packaging/build.sh
 ```
 
@@ -310,7 +315,7 @@ packaging/        PyInstaller spec and build scripts
 
 ## Как запустить (RU)
 
-Пошаговый туториал: установка, CLI, GUI, провайдеры, сборка. Ключи не нужны — по умолчанию
+Пошаговый туториал: установка, CLI, GUI, провайдеры, сборка. Ключи не нужны - по умолчанию
 работает безключевой провайдер `pollinations` (см. [No keys at all](#no-keys-at-all)).
 
 ### 1. Установка
@@ -331,7 +336,7 @@ python -m venv .venv
 
 Нужен Python 3.10+. После установки доступны: команда `promptwizard`, лаунчеры `run.bat`
 (Windows) / `run.sh` (Linux, macOS) и `python -m promptwizard`. Для GUI нужен tkinter: на Windows и
-macOS он есть в установщиках с python.org, на Linux — пакет `python3-tk`.
+macOS он есть в установщиках с python.org, на Linux - пакет `python3-tk`.
 
 ### 2. Быстрый старт
 
@@ -344,9 +349,9 @@ cd C:\path\to\PromptWizard
 
 ### 3. CLI
 
-**Интерактивный режим** — самый полный: запусти `run.bat` без аргументов. Программа попросит
+**Интерактивный режим** - самый полный: запусти `run.bat` без аргументов. Программа попросит
 вставить промт (пустая строка завершает ввод), покажет проблемы, **задаст все уточняющие вопросы
-сразу** (ответы — по одной строке, пустая строка = пропустить) и выдаст улучшенный промт с
+сразу** (ответы - по одной строке, пустая строка = пропустить) и выдаст улучшенный промт с
 объяснением правок. Вопросы задаются только в интерактивном терминале.
 
 ```powershell
@@ -365,7 +370,7 @@ cd C:\path\to\PromptWizard
 | `--provider <имя>` | pollinations / ollama / gemini / groq / openrouter / offline |
 | `--model`, `--base-url` | переопределить модель или адрес провайдера |
 | `--temperature`, `--max-tokens`, `--timeout` | параметры запроса |
-| `--max-questions N` | сколько вопросов задавать (0 — ни одного) |
+| `--max-questions N` | сколько вопросов задавать (0 - ни одного) |
 | `--no-questions`, `--no-save` | пропустить вопросы / не писать сессию |
 | `--out FILE --format md\|txt\|json` | сохранить результат |
 | `--json` | результат в JSON |
@@ -399,8 +404,8 @@ cd C:\path\to\PromptWizard
 
 | Что нужно | Как |
 |---|---|
-| Без ключей (по умолчанию) | `.\run.bat "промт"` — `pollinations` |
-| Совсем без сети | `--provider offline` — только правила, без модели |
+| Без ключей (по умолчанию) | `.\run.bat "промт"` - `pollinations` |
+| Совсем без сети | `--provider offline` - только правила, без модели |
 | Полностью локально | установить [Ollama](https://ollama.com), `ollama pull llama3.2`, затем `--provider ollama` |
 | Ключевой free-tier | скопировать `.env.example` в `.env`, вписать ключ (например `GROQ_API_KEY`), затем `--provider groq --model llama-3.3-70b-versatile` |
 
@@ -437,4 +442,4 @@ sudo apt-get install -y python3-tk     # для GUI, если tkinter нет
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT - see [LICENSE](LICENSE).

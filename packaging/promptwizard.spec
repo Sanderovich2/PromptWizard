@@ -16,8 +16,7 @@ for optional in ("webview", "clr_loader"):
         continue
     hiddenimports.append(optional)
 
-a = Analysis(
-    [str(ROOT / "promptwizard" / "__main__.py")],
+COMMON = dict(
     pathex=[str(ROOT)],
     binaries=[],
     datas=datas,
@@ -28,22 +27,44 @@ a = Analysis(
     noarchive=False,
 )
 
-pyz = PYZ(a.pure)
-
-exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.datas,
-    [],
-    name="promptwizard",
+COMMON_EXE = dict(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=True,
     disable_windowed_traceback=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+)
+
+ICON = ROOT / "packaging" / "promptwizard.ico"
+ICON_ARG = {"icon": str(ICON)} if ICON.exists() else {}
+
+cli_analysis = Analysis([str(ROOT / "promptwizard" / "__main__.py")], **COMMON)
+cli_pyz = PYZ(cli_analysis.pure)
+cli_exe = EXE(
+    cli_pyz,
+    cli_analysis.scripts,
+    cli_analysis.binaries,
+    cli_analysis.datas,
+    [],
+    name="promptwizard",
+    console=True,
+    **COMMON_EXE,
+    **ICON_ARG,
+)
+
+gui_analysis = Analysis([str(ROOT / "promptwizard" / "gui_main.py")], **COMMON)
+gui_pyz = PYZ(gui_analysis.pure)
+gui_exe = EXE(
+    gui_pyz,
+    gui_analysis.scripts,
+    gui_analysis.binaries,
+    gui_analysis.datas,
+    [],
+    name="promptwizard-gui",
+    console=False,
+    **COMMON_EXE,
+    **ICON_ARG,
 )

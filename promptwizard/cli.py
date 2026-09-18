@@ -14,7 +14,7 @@ from promptwizard.pipeline import SessionResult, run
 from promptwizard.questions import Question
 from promptwizard.storage import get_session, list_sessions, save_session
 __all__ = ['COMMANDS', 'build_parser', 'main']
-COMMANDS: tuple[str, ...] = ('run', 'gui', 'providers', 'sessions', 'config', 'version')
+COMMANDS: tuple[str, ...] = ('run', 'gui', 'providers', 'models', 'sessions', 'config', 'version')
 
 class Printer:
 
@@ -94,6 +94,7 @@ def build_parser(translator: Translator, command: str='run') -> argparse.Argumen
         parser.add_argument('--json', action='store_true', help=translator('arg.json.help'))
     elif command == 'config':
         parser.add_argument('--init', action='store_true', help=translator('arg.init.help'))
+        parser.add_argument('--set', action='append', metavar='KEY=VALUE', help=translator('arg.set.help'))
     return parser
 
 def build_config(args: argparse.Namespace, command: str) -> Config:
@@ -262,7 +263,42 @@ def _cmd_sessions(args: argparse.Namespace, config: Config, translator: Translat
     printer.out(translator('sessions.saved_count', count=len(records)))
     return 0
 
+def _coerce(value: str) -> Any:
+    lowered = value.strip().lower()
+    if lowered in ('true', 'false'):
+        return lowered == 'true'
+    for cast in (int, float):
+        try:
+            return cast(value)
+        except ValueError:
+            continue
+    return value
+
+
+def _cmd_models(args: argparse.Namespace, config: Config, translator: Translator, printer: Printer) -> int:
+    from promptwizard.settings import available_models
+    data = available_models(config, getattr(args, 'provider', None))
+    printer.out(translator('models.header', provider=data['provider']))
+    for name in data['models']:
+        printer.out(('* ' if name == data['current'] else '  ') + name)
+    if data['note']:
+        printer.out(translator('models.note', reason=data['note']))
+    return 0
+
+
 def _cmd_config(args: argparse.Namespace, config: Config, translator: Translator, printer: Printer) -> int:
+    updates = getattr(args, 'set', None)
+    if updates:
+        from promptwizard.errors import ConfigError
+        from promptwizard.settings import save_settings
+        payload: dict[str, Any] = {}
+        for entry in updates:
+            key, separator, value = entry.partition('=')
+            if not separator or not key.strip():
+                raise ConfigError(f'expected KEY=VALUE, got {entry!r}', hint_key='error.config.invalid')
+            payload[key.strip()] = _coerce(value)
+        printer.out(translator('config.written', path=save_settings(config, payload)))
+        return 0
     if getattr(args, 'init', False):
         if config.config_path.exists():
             printer.out(translator('config.path', path=config.config_path))
@@ -301,6 +337,8 @@ def main(argv: Sequence[str] | None=None) -> int:
     try:
         if command == 'providers':
             return _cmd_providers(config, translator, printer)
+        if command == 'models':
+            return _cmd_models(args, config, translator, printer)
         if command == 'sessions':
             return _cmd_sessions(args, config, translator, printer)
         if command == 'config':

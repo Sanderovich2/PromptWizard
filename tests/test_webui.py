@@ -111,3 +111,64 @@ def test_unknown_session_is_refused(web):
 def test_unknown_path_is_a_404(web):
     status, _body = get(web, "/nope")
     assert status == 404
+
+
+def test_state_exposes_settings(web):
+    status, body = get(web, "/api/state")
+    payload = json.loads(body)
+    assert status == 200
+    assert payload["settings"]["theme"] == "light"
+    assert payload["settings"]["provider"] == "offline"
+    assert payload["themes"] == ["light", "dark"]
+    assert "web.settings" in payload["strings"]
+
+
+def test_settings_are_saved_to_disk(web, tmp_path):
+    status, data = post(web, "/api/settings", {"theme": "dark", "provider": "offline", "model": "demo"})
+    assert status == 200
+    assert data["settings"]["theme"] == "dark"
+    assert data["settings"]["model"] == "demo"
+    saved = json.loads((tmp_path / "config.json").read_text(encoding="utf-8"))
+    assert saved["theme"] == "dark"
+    assert saved["providers"]["offline"]["model"] == "demo"
+    status, body = get(web, "/api/state")
+    assert json.loads(body)["settings"]["theme"] == "dark"
+
+
+def test_custom_provider_is_saved_and_selected(web, tmp_path):
+    status, data = post(
+        web,
+        "/api/settings",
+        {
+            "providers": {
+                "mine": {
+                    "base_url": "https://api.example.com/v1",
+                    "model": "m1",
+                    "api_key_env": "MINE_API_KEY",
+                }
+            },
+            "provider": "mine",
+            "model": "m1",
+        },
+    )
+    assert status == 200
+    assert data["settings"]["provider"] == "mine"
+    assert data["settings"]["model"] == "m1"
+    saved = json.loads((tmp_path / "config.json").read_text(encoding="utf-8"))
+    assert saved["providers"]["mine"]["base_url"] == "https://api.example.com/v1"
+    assert saved["providers"]["mine"]["api_key_env"] == "MINE_API_KEY"
+
+
+def test_unknown_setting_is_refused(web):
+    status, data = post(web, "/api/settings", {"nonsense": 1})
+    assert status == 400
+    assert "error" in data
+
+
+def test_models_endpoint(web):
+    status, body = get(web, "/api/models?provider=offline")
+    data = json.loads(body)
+    assert status == 200
+    assert data["provider"] == "offline"
+    assert data["current"] == "deterministic-stub"
+    assert "deterministic-stub" in data["models"]

@@ -35,6 +35,7 @@
     "interrupt": "Cancelled."
   },
   "cmd": {
+    "models": { "help": "List the models the current provider offers." },
     "run": { "help": "Analyze and rewrite a prompt (default command)." },
     "gui": { "help": "Open the optional tkinter window." },
     "providers": { "help": "Show configured providers and whether they are reachable." },
@@ -42,7 +43,31 @@
     "config": { "help": "Show or create the configuration file." },
     "version": { "help": "Print the version and exit." }
   },
+  "web": {
+    "settings": "Settings",
+    "theme": "Theme",
+    "theme_light": "Light",
+    "theme_dark": "Dark",
+    "model": "Model",
+    "name": "Name",
+    "base_url": "Base URL",
+    "api_key_env": "API key variable",
+    "save_settings": "Save settings",
+    "saved_settings": "Saved.",
+    "models_from": "The model list came from the provider.",
+    "models_builtin": "Showing the built-in default; type any model id to override.",
+    "custom_provider": "Add your own provider",
+    "custom_hint": "Any OpenAI-compatible endpoint: base URL, a model id, and the environment variable that holds the key.",
+    "add_provider": "Add provider",
+    "provider_added": "Provider added and selected.",
+    "custom_required": "Name, base URL and model are required."
+  },
+  "models": {
+    "header": "Models for {provider}",
+    "note": "Could not ask the provider: {reason}"
+  },
   "arg": {
+    "set": { "help": "Save a setting, for example --set theme=dark --set provider=groq." },
     "prompt": { "help": "The prompt to improve. If omitted, read from --file, stdin, or ask interactively." },
     "file": { "help": "Read the original prompt from this file." },
     "lang": { "help": "UI language: ru or en." },

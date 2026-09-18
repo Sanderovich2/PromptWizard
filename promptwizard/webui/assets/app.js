@@ -334,6 +334,8 @@ async function loadState(lang) {
   state.provider = data.provider;
   state.model = data.model;
   state.strings = data.strings || {};
+  state.settings = data.settings || {};
+  state.themes = data.themes || ["light", "dark"];
   const select = $("lang");
   select.textContent = "";
   state.languages.forEach((code) => {
@@ -344,6 +346,7 @@ async function loadState(lang) {
     select.append(option);
   });
   $("prompt").placeholder = t("gui.prompt_placeholder");
+  fillSettings();
   applyStrings();
   if (session) renderAnalysis(session);
   if (session) renderQuestions(session.questions || []);
@@ -372,6 +375,104 @@ function wire() {
   });
 }
 
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = state.themes.includes(theme) ? theme : "light";
+}
+
+function fillSettings() {
+  const settings = state.settings || {};
+  applyTheme(settings.theme);
+  $("theme").value = settings.theme || "light";
+  const select = $("provider-select");
+  select.textContent = "";
+  Object.keys(settings.providers || {}).sort().forEach((name) => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    option.selected = name === settings.provider;
+    select.append(option);
+  });
+  $("model-input").value = settings.model || "";
+  $("config-path").textContent = settings.path || "";
+  loadModels(settings.provider);
+}
+
+async function loadModels(provider) {
+  const note = $("models-note");
+  try {
+    const response = await fetch("/api/models?provider=" + encodeURIComponent(provider || ""));
+    const data = await response.json();
+    const list = $("model-list");
+    list.textContent = "";
+    (data.models || []).forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      list.append(option);
+    });
+    if (!data.note && data.current) $("model-input").value = $("model-input").value || data.current;
+    note.textContent = data.note || t(data.source === "provider" ? "web.models_from" : "web.models_builtin");
+  } catch (error) {
+    note.textContent = error.message;
+  }
+}
+
+async function saveSettings() {
+  const payload = { theme: $("theme").value, provider: $("provider-select").value, model: $("model-input").value.trim() };
+  try {
+    const data = await post("/api/settings", payload);
+    state.settings = data.settings || state.settings;
+    state.strings = data.strings || state.strings;
+    fillSettings();
+    applyStrings();
+    $("settings-note").textContent = t("web.saved_settings");
+  } catch (error) {
+    $("settings-note").textContent = error.message;
+  }
+}
+
+async function addCustomProvider() {
+  const name = $("custom-name").value.trim();
+  const base = $("custom-base").value.trim();
+  const model = $("custom-model").value.trim();
+  const keyEnv = $("custom-key").value.trim();
+  const note = $("custom-note");
+  if (!name || !base || !model) {
+    note.textContent = t("web.custom_required");
+    return;
+  }
+  const providers = {};
+  providers[name] = { base_url: base, model: model, api_key_env: keyEnv, kind: "openai_compatible" };
+  try {
+    const data = await post("/api/settings", { providers: providers, provider: name, model: model });
+    state.settings = data.settings || state.settings;
+    state.strings = data.strings || state.strings;
+    fillSettings();
+    note.textContent = t("web.provider_added");
+  } catch (error) {
+    note.textContent = error.message;
+  }
+}
+
+function wireSettings() {
+  $("open-settings").addEventListener("click", () => {
+    $("drawer").hidden = false;
+  });
+  $("close-settings").addEventListener("click", () => {
+    $("drawer").hidden = true;
+  });
+  $("theme").addEventListener("change", (event) => applyTheme(event.target.value));
+  $("provider-select").addEventListener("change", (event) => loadModels(event.target.value));
+  $("settings-save").addEventListener("click", saveSettings);
+  $("custom-save").addEventListener("click", addCustomProvider);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") $("drawer").hidden = true;
+  });
+}
+
+wireSettings();
 wire();
 setStep("prompt");
+if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+  document.documentElement.dataset.theme = "dark";
+}
 loadState("ru");

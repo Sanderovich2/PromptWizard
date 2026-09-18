@@ -12,6 +12,8 @@ CONFIG_FILENAME = 'config.json'
 DEFAULT_HOME = Path.home() / '.promptwizard'
 PROVIDER_DEFAULTS: dict[str, dict[str, str]] = {'pollinations': {'base_url': 'https://text.pollinations.ai/openai', 'model': 'openai', 'api_key_env': '', 'kind': 'openai_compatible'}, 'ollama': {'base_url': 'http://localhost:11434', 'model': 'llama3.2', 'api_key_env': '', 'kind': 'ollama'}, 'gemini': {'base_url': 'https://generativelanguage.googleapis.com', 'model': 'gemini-2.5-flash', 'api_key_env': 'GEMINI_API_KEY', 'kind': 'gemini'}, 'groq': {'base_url': 'https://api.groq.com/openai/v1', 'model': 'llama-3.3-70b-versatile', 'api_key_env': 'GROQ_API_KEY', 'kind': 'openai_compatible'}, 'openrouter': {'base_url': 'https://openrouter.ai/api/v1', 'model': 'meta-llama/llama-3.3-70b-instruct:free', 'api_key_env': 'OPENROUTER_API_KEY', 'kind': 'openai_compatible'}, 'openai_compatible': {'base_url': '', 'model': '', 'api_key_env': 'OPENAI_API_KEY', 'kind': 'openai_compatible'}, 'offline': {'base_url': '', 'model': 'deterministic-stub', 'api_key_env': '', 'kind': 'offline'}}
 PROVIDER_NAMES: tuple[str, ...] = tuple(PROVIDER_DEFAULTS)
+
+THEMES: tuple[str, ...] = ('light', 'dark')
 _DOTENV_SEARCH = (Path('.env'), Path.home() / '.promptwizard' / '.env')
 
 def resolve_home(home: str | os.PathLike[str] | None=None) -> Path:
@@ -74,6 +76,7 @@ class ProviderSettings:
 class Config:
     home: Path = DEFAULT_HOME
     lang: str = DEFAULT_LANGUAGE
+    theme: str = 'light'
     provider: str = 'pollinations'
     model: str = ''
     temperature: float = 0.3
@@ -102,6 +105,7 @@ class Config:
             raw = _read_json_object(config_path)
         config = cls(home=resolved_home, source=config_path if config_path.exists() else None)
         config.lang = normalize_language(_pick(raw, 'lang', os.environ.get('PROMPTWIZARD_LANG'), config.lang))
+        config.theme = str(_pick(raw, 'theme', os.environ.get('PROMPTWIZARD_THEME'), config.theme)).strip().lower()
         config.provider = str(_pick(raw, 'provider', os.environ.get('PROMPTWIZARD_PROVIDER'), config.provider))
         config.model = str(_pick(raw, 'model', os.environ.get('PROMPTWIZARD_MODEL'), config.model) or '')
         config.temperature = _as_float(_pick(raw, 'temperature', os.environ.get('PROMPTWIZARD_TEMPERATURE'), config.temperature), 'temperature')
@@ -125,6 +129,8 @@ class Config:
         return config
 
     def validate(self) -> None:
+        if self.theme not in THEMES:
+            raise ConfigError(f"theme must be one of {', '.join(THEMES)}, got {self.theme!r}", hint_key='error.config.range')
         if not 0.0 <= float(self.temperature) <= 2.0:
             raise ConfigError(f'temperature must be between 0 and 2, got {self.temperature}', hint_key='error.config.range')
         if float(self.timeout) <= 0:
@@ -167,7 +173,7 @@ class Config:
             self.model = model
 
     def to_dict(self, *, redact: bool=True) -> dict[str, Any]:
-        return {'lang': self.lang, 'provider': self.provider, 'model': self.model, 'temperature': self.temperature, 'max_tokens': self.max_tokens, 'timeout': self.timeout, 'max_questions': self.max_questions, 'providers': {name: settings.to_dict(redact=redact) for name, settings in sorted(self.providers.items())}}
+        return {'lang': self.lang, 'theme': self.theme, 'provider': self.provider, 'model': self.model, 'temperature': self.temperature, 'max_tokens': self.max_tokens, 'timeout': self.timeout, 'max_questions': self.max_questions, 'providers': {name: settings.to_dict(redact=redact) for name, settings in sorted(self.providers.items())}}
 
     def save(self, path: str | os.PathLike[str] | None=None) -> Path:
         target = Path(path).expanduser() if path is not None else self.config_path

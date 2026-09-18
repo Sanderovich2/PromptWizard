@@ -70,19 +70,21 @@ jobs:
             ./dist/promptwizard --version
           fi
 
-      - name: Name the asset for the release
+      - name: Name the assets for the release
         shell: bash
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
             mv dist/promptwizard.exe "dist/${{ matrix.asset }}"
+            mv dist/promptwizard-gui.exe "dist/promptwizard-gui-windows-x86_64.exe"
           else
             mv dist/promptwizard "dist/${{ matrix.asset }}"
+            mv dist/promptwizard-gui "dist/$(basename "${{ matrix.asset }}")-gui"
           fi
 
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
-          path: dist/${{ matrix.asset }}
+          path: dist/
           if-no-files-found: error
 
   release:
