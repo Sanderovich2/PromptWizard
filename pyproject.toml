@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "promptwizard"
-version = "0.4.1"
+version = "0.4.2"
 description = "Analyze a prompt, ask the missing questions in one batch, and rewrite it into a clearer, better-specified version (RU/EN, CLI + optional tkinter GUI, free LLM providers)."
 readme = "README.md"
 requires-python = ">=3.10"
