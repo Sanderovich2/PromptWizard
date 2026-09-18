@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from promptwizard.autostart import state as autostart_state
-from promptwizard.config import FONTS, PROVIDER_DEFAULTS, Config
+from promptwizard.config import FONTS, PROVIDER_DEFAULTS, THEMES, Config
 from promptwizard.errors import ConfigError
 from promptwizard.i18n import LANGUAGES
 
@@ -23,6 +23,14 @@ SETTING_KEYS = (
     "max_tokens",
     "timeout",
     "max_questions",
+    "auto_copy",
+    "autosave_dir",
+    "translate_prompt",
+    "check_updates",
+    "theme_day_start",
+    "theme_night_start",
+    "system_analyzer",
+    "system_rewriter",
     "models",
     "font",
     "font_size",
@@ -43,8 +51,16 @@ def settings_view(config: Config) -> dict[str, Any]:
         "max_tokens": config.max_tokens,
         "timeout": config.timeout,
         "max_questions": config.max_questions,
+        "auto_copy": config.auto_copy,
+        "autosave_dir": config.autosave_dir,
+        "translate_prompt": config.translate_prompt,
+        "check_updates": config.check_updates,
+        "theme_day_start": config.theme_day_start,
+        "theme_night_start": config.theme_night_start,
+        "system_analyzer": config.system_analyzer,
+        "system_rewriter": config.system_rewriter,
         "languages": list(LANGUAGES),
-        "themes": ["light", "dark"],
+        "themes": list(THEMES),
         "providers": {name: block.to_dict() for name, block in sorted(config.providers.items())},
         "presets": {name: preset.to_dict() for name, preset in sorted(config.presets.items())},
         "fonts": list(FONTS),

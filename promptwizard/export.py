@@ -6,11 +6,16 @@ from promptwizard.errors import StorageError
 from promptwizard.i18n import Translator
 from promptwizard.pipeline import SessionResult
 from promptwizard.rewriter import Rewrite
-__all__ = ['FORMATS', 'render', 'to_json', 'to_markdown', 'to_text', 'write_output']
+__all__ = ['FORMATS', 'autosave_result', 'render', 'to_json', 'to_markdown', 'to_text', 'write_output']
 FORMATS: tuple[str, ...] = ('md', 'txt', 'json')
 
 def _rewrite(result: SessionResult) -> Rewrite | None:
     return result.rewrite
+
+def _stats_line(result: SessionResult, translator: Translator) -> str:
+    if not (result.duration_ms or result.tokens_in or result.tokens_out):
+        return ''
+    return translator('run.stats', seconds=f'{result.duration_ms / 1000:.1f}', tokens=result.tokens_in + result.tokens_out, provider=result.provider, model=result.model)
 
 def to_markdown(result: SessionResult, translator: Translator) -> str:
     rewrite = _rewrite(result)
@@ -18,6 +23,9 @@ def to_markdown(result: SessionResult, translator: Translator) -> str:
     lines.append(translator('run.summary', provider=result.provider, model=result.model, language=result.prompt_language))
     lines.append('')
     lines.append(translator('run.mode_label', mode=translator(f'run.mode.{result.mode}')))
+    stats = _stats_line(result, translator)
+    if stats:
+        lines.append(stats)
     lines.append('')
     lines.append(f"## {translator('run.original_header')}")
     lines.append('')
@@ -25,6 +33,13 @@ def to_markdown(result: SessionResult, translator: Translator) -> str:
     lines.append(result.original_prompt.strip())
     lines.append('```')
     lines.append('')
+    if result.translated_prompt:
+        lines.append(f"## {translator('run.translation_header')}")
+        lines.append('')
+        lines.append('```text')
+        lines.append(result.translated_prompt.strip())
+        lines.append('```')
+        lines.append('')
     lines.append(f"## {translator('run.issues_header')}")
     lines.append('')
     lines.append(translator('run.score', score=result.analysis.score))
@@ -71,10 +86,17 @@ def to_text(result: SessionResult, translator: Translator) -> str:
     parts: list[str] = [bar, translator('app.name'), bar, '']
     parts.append(translator('run.summary', provider=result.provider, model=result.model, language=result.prompt_language))
     parts.append(translator('run.mode_label', mode=translator(f'run.mode.{result.mode}')))
+    stats = _stats_line(result, translator)
+    if stats:
+        parts.append(stats)
     parts.append('')
     parts.append(translator('run.original_header').upper())
     parts.append(result.original_prompt.strip())
     parts.append('')
+    if result.translated_prompt:
+        parts.append(translator('run.translation_header').upper())
+        parts.append(result.translated_prompt.strip())
+        parts.append('')
     parts.append(translator('run.issues_header').upper())
     parts.append(translator('run.score', score=result.analysis.score))
     if result.analysis.issues:
@@ -130,6 +152,12 @@ def write_output(text: str, path: str | Path) -> Path:
     except OSError as exc:
         raise StorageError(f'cannot write the result to {target}: {exc}') from exc
     return target
+
+def autosave_result(result: SessionResult, translator: Translator, directory: str | Path | None) -> Path | None:
+    target = str(directory or '').strip()
+    if not target:
+        return None
+    return write_output(render(result, 'md', translator), Path(target).expanduser() / f'promptwizard-{result.id}.md')
 
 def session_to_markdown(record: dict[str, Any], translator: Translator) -> str:
     return to_markdown(SessionResult.from_dict(record), translator)

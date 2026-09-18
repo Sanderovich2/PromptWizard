@@ -5,7 +5,7 @@ from typing import Any, Mapping, Sequence
 from promptwizard.errors import LLMResponseError
 from promptwizard.i18n import Translator
 from promptwizard.parsing import as_int, as_list, as_str, extract_json
-__all__ = ['CATEGORIES', 'SEVERITIES', 'Analysis', 'Issue', 'build_system_prompt', 'build_user_prompt', 'heuristic', 'normalize_category', 'normalize_severity', 'parse']
+__all__ = ['CATEGORIES', 'SEVERITIES', 'Analysis', 'Issue', 'append_extra_instructions', 'build_system_prompt', 'build_user_prompt', 'heuristic', 'normalize_category', 'normalize_severity', 'parse']
 CATEGORIES: tuple[str, ...] = ('clarity', 'structure', 'ambiguity', 'missing_detail', 'weak_phrasing', 'constraints', 'format', 'audience', 'examples', 'scope', 'tone', 'context')
 SEVERITIES: tuple[str, ...] = ('high', 'medium', 'low')
 MAX_ISSUES = 8
@@ -34,9 +34,18 @@ def normalize_severity(value: Any) -> str:
     token = as_str(value).strip().lower()
     return token if token in SEVERITIES else 'medium'
 
-def build_system_prompt(translator: Translator) -> str:
+EXTRA_HEADER = '\n\nAdditional instructions from the user. Apply them to the work, but never change the response contract stated above:\n'
+
+def append_extra_instructions(system: str, extra: str='') -> str:
+    text = (extra or '').strip()
+    if not text:
+        return system
+    return system + EXTRA_HEADER + text
+
+def build_system_prompt(translator: Translator, extra: str='') -> str:
     schema = '{"language":"ru|en|other","score":<integer 0-100, how well the prompt is specified>,"summary":"<one or two sentences>","issues":[{"category":"' + '|'.join(CATEGORIES) + '","severity":"high|medium|low","title":"<short headline>","detail":"<why it matters and how to fix it>","evidence":"<quote from the prompt, or empty>"}]}'
-    return "You are PromptWizard, a prompt engineer. Analyze the user's prompt and answer with STRICT JSON only: no prose, no markdown fence, exactly this shape:\n" + schema + f"""\nRules:\n- Return at most {MAX_ISSUES} issues, most important first.\n- Judge how the prompt is specified (clarity, structure, ambiguity, missing detail, constraints, format, audience, examples, scope, tone, context), never the topic itself.\n- Do not invent problems: an already strong prompt may return an empty issues list.\n- Write "summary", "title" and "detail" in {translator('language.' + translator.lang)}.\n- Set "language" to the language of the analyzed prompt."""
+    system = "You are PromptWizard, a prompt engineer. Analyze the user's prompt and answer with STRICT JSON only: no prose, no markdown fence, exactly this shape:\n" + schema + f"""\nRules:\n- Return at most {MAX_ISSUES} issues, most important first.\n- Judge how the prompt is specified (clarity, structure, ambiguity, missing detail, constraints, format, audience, examples, scope, tone, context), never the topic itself.\n- Do not invent problems: an already strong prompt may return an empty issues list.\n- Write "summary", "title" and "detail" in {translator('language.' + translator.lang)}.\n- Set "language" to the language of the analyzed prompt."""
+    return append_extra_instructions(system, extra)
 
 def build_user_prompt(prompt: str) -> str:
     return 'Analyze this prompt:\n<PROMPT>\n' + prompt + '\n</PROMPT>'

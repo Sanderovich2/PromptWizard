@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping, Sequence
-from promptwizard.analyzer import Analysis
+from promptwizard.analyzer import Analysis, append_extra_instructions
 from promptwizard.errors import LLMResponseError
 from promptwizard.i18n import Translator
 from promptwizard.parsing import as_list, as_str, extract_json
@@ -16,10 +16,11 @@ class Rewrite:
     language: str
     raw: str = ''
 
-def build_system_prompt(translator: Translator, prompt_language: str) -> str:
+def build_system_prompt(translator: Translator, prompt_language: str, extra: str='') -> str:
     schema = '{"improved_prompt":"<the rewritten prompt>","changes":[{"what":"<what changed>","why":"<why>"}],"language":"ru|en|other"}'
     target = translator.get(f'language.{prompt_language}', default=translator('language.unknown'))
-    return "You are PromptWizard, a prompt engineer. Rewrite the user's prompt so a model understands it better, and answer with STRICT JSON only:\n" + schema + f"""\nRules:\n- Write "improved_prompt" in {target}: the same language as the original prompt.\n- Write every "what" and "why" in {translator('language.' + translator.lang)}.\n- Keep the original intent and constraints. Do not add requirements the user did not imply; make the implicit explicit instead.\n- Structure the result: role or task, context, constraints, expected output format, and audience or examples when they matter.\n- List the concrete changes you made, one entry each, most important first.\n- Return only the improved prompt in "improved_prompt": no commentary, no markdown fence."""
+    system = "You are PromptWizard, a prompt engineer. Rewrite the user's prompt so a model understands it better, and answer with STRICT JSON only:\n" + schema + f"""\nRules:\n- Write "improved_prompt" in {target}: the same language as the original prompt.\n- Write every "what" and "why" in {translator('language.' + translator.lang)}.\n- Keep the original intent and constraints. Do not add requirements the user did not imply; make the implicit explicit instead.\n- Structure the result: role or task, context, constraints, expected output format, and audience or examples when they matter.\n- List the concrete changes you made, one entry each, most important first.\n- Return only the improved prompt in "improved_prompt": no commentary, no markdown fence."""
+    return append_extra_instructions(system, extra)
 
 def build_user_prompt(prompt: str, analysis: Analysis, questions: Sequence[object]=(), answers: Mapping[str, str] | None=None) -> str:
     lines = ['Original prompt:', prompt.strip(), '', 'Known weaknesses:']

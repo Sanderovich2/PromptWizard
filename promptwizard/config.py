@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
@@ -13,7 +14,7 @@ DEFAULT_HOME = Path.home() / '.promptwizard'
 PROVIDER_DEFAULTS: dict[str, dict[str, str]] = {'pollinations': {'base_url': 'https://text.pollinations.ai/openai', 'model': 'openai', 'api_key_env': '', 'kind': 'openai_compatible'}, 'ollama': {'base_url': 'http://localhost:11434', 'model': 'llama3.2', 'api_key_env': '', 'kind': 'ollama'}, 'gemini': {'base_url': 'https://generativelanguage.googleapis.com', 'model': 'gemini-2.5-flash', 'api_key_env': 'GEMINI_API_KEY', 'kind': 'gemini'}, 'groq': {'base_url': 'https://api.groq.com/openai/v1', 'model': 'llama-3.3-70b-versatile', 'api_key_env': 'GROQ_API_KEY', 'kind': 'openai_compatible'}, 'openrouter': {'base_url': 'https://openrouter.ai/api/v1', 'model': 'meta-llama/llama-3.3-70b-instruct:free', 'api_key_env': 'OPENROUTER_API_KEY', 'kind': 'openai_compatible'}, 'openai_compatible': {'base_url': '', 'model': '', 'api_key_env': 'OPENAI_API_KEY', 'kind': 'openai_compatible'}, 'offline': {'base_url': '', 'model': 'deterministic-stub', 'api_key_env': '', 'kind': 'offline'}}
 PROVIDER_NAMES: tuple[str, ...] = tuple(PROVIDER_DEFAULTS)
 
-THEMES: tuple[str, ...] = ('light', 'dark', 'auto')
+THEMES: tuple[str, ...] = ('light', 'dark', 'auto', 'schedule')
 
 FONTS: tuple[str, ...] = (
     '',
@@ -130,6 +131,14 @@ class Config:
     max_tokens: int = 1200
     timeout: float = 60.0
     max_questions: int = 6
+    auto_copy: bool = False
+    autosave_dir: str = ''
+    translate_prompt: bool = False
+    check_updates: bool = True
+    theme_day_start: str = '07:00'
+    theme_night_start: str = '19:00'
+    system_analyzer: str = ''
+    system_rewriter: str = ''
     providers: dict[str, ProviderSettings] = field(default_factory=dict)
     presets: dict[str, ModelPreset] = field(default_factory=dict)
     source: Path | None = None
@@ -162,6 +171,14 @@ class Config:
         config.max_tokens = _as_int(_pick(raw, 'max_tokens', os.environ.get('PROMPTWIZARD_MAX_TOKENS'), config.max_tokens), 'max_tokens')
         config.timeout = _as_float(_pick(raw, 'timeout', os.environ.get('PROMPTWIZARD_TIMEOUT'), config.timeout), 'timeout')
         config.max_questions = _as_int(_pick(raw, 'max_questions', os.environ.get('PROMPTWIZARD_MAX_QUESTIONS'), config.max_questions), 'max_questions')
+        config.system_analyzer = str(_pick(raw, 'system_analyzer', os.environ.get('PROMPTWIZARD_SYSTEM_ANALYZER'), config.system_analyzer) or '').strip()
+        config.system_rewriter = str(_pick(raw, 'system_rewriter', os.environ.get('PROMPTWIZARD_SYSTEM_REWRITER'), config.system_rewriter) or '').strip()
+        config.auto_copy = _as_bool(_pick(raw, 'auto_copy', os.environ.get('PROMPTWIZARD_AUTO_COPY'), config.auto_copy), 'auto_copy')
+        config.autosave_dir = str(_pick(raw, 'autosave_dir', os.environ.get('PROMPTWIZARD_AUTOSAVE_DIR'), config.autosave_dir) or '').strip()
+        config.translate_prompt = _as_bool(_pick(raw, 'translate_prompt', os.environ.get('PROMPTWIZARD_TRANSLATE_PROMPT'), config.translate_prompt), 'translate_prompt')
+        config.check_updates = _as_bool(_pick(raw, 'check_updates', os.environ.get('PROMPTWIZARD_CHECK_UPDATES'), config.check_updates), 'check_updates')
+        config.theme_day_start = _as_time(_pick(raw, 'theme_day_start', os.environ.get('PROMPTWIZARD_THEME_DAY_START'), config.theme_day_start), 'theme_day_start')
+        config.theme_night_start = _as_time(_pick(raw, 'theme_night_start', os.environ.get('PROMPTWIZARD_THEME_NIGHT_START'), config.theme_night_start), 'theme_night_start')
         config.providers = _build_providers(raw.get('providers'))
         config.presets = _build_presets(raw.get('models'))
         if overrides:
@@ -192,6 +209,8 @@ class Config:
             raise ConfigError(f'max_tokens must be > 0, got {self.max_tokens}', hint_key='error.config.range')
         if not 0 <= int(self.max_questions) <= 20:
             raise ConfigError(f'max_questions must be between 0 and 20, got {self.max_questions}', hint_key='error.config.range')
+        _as_time(self.theme_day_start, 'theme_day_start')
+        _as_time(self.theme_night_start, 'theme_night_start')
         if not str(self.provider).strip():
             raise ConfigError('provider must not be empty', hint_key='error.config.range')
 
@@ -245,7 +264,7 @@ class Config:
             self.model = model
 
     def to_dict(self, *, redact: bool=True) -> dict[str, Any]:
-        return {'lang': self.lang, 'theme': self.theme, 'font': self.font, 'font_size': self.font_size, 'provider': self.provider, 'model': self.model, 'temperature': self.temperature, 'max_tokens': self.max_tokens, 'timeout': self.timeout, 'max_questions': self.max_questions, 'providers': {name: settings.to_dict(redact=redact) for name, settings in sorted(self.providers.items())}}
+        return {'lang': self.lang, 'theme': self.theme, 'font': self.font, 'font_size': self.font_size, 'provider': self.provider, 'model': self.model, 'temperature': self.temperature, 'max_tokens': self.max_tokens, 'timeout': self.timeout, 'max_questions': self.max_questions, 'auto_copy': self.auto_copy, 'autosave_dir': self.autosave_dir, 'translate_prompt': self.translate_prompt, 'check_updates': self.check_updates, 'theme_day_start': self.theme_day_start, 'theme_night_start': self.theme_night_start, 'system_analyzer': self.system_analyzer, 'system_rewriter': self.system_rewriter, 'providers': {name: settings.to_dict(redact=redact) for name, settings in sorted(self.providers.items())}}
 
     def save(self, path: str | os.PathLike[str] | None=None) -> Path:
         target = Path(path).expanduser() if path is not None else self.config_path
@@ -276,6 +295,23 @@ def _as_int(value: Any, key: str) -> int:
         return int(value)
     except (TypeError, ValueError) as exc:
         raise ConfigError(f'{key} must be an integer, got {value!r}', hint_key='error.config.range') from exc
+
+def _as_bool(value: Any, key: str) -> bool:
+    if isinstance(value, bool):
+        return value
+    token = str(value).strip().lower()
+    if token in ('1', 'true', 'yes', 'on'):
+        return True
+    if token in ('', '0', 'false', 'no', 'off'):
+        return False
+    raise ConfigError(f'{key} must be a boolean, got {value!r}', hint_key='error.config.range')
+
+def _as_time(value: Any, key: str) -> str:
+    token = str(value or '').strip()
+    match = re.fullmatch('([0-9]{1,2}):([0-9]{1,2})', token)
+    if match is None or int(match.group(1)) > 23 or int(match.group(2)) > 59:
+        raise ConfigError(f'{key} must look like HH:MM, got {value!r}', hint_key='error.config.range')
+    return f'{int(match.group(1)):02d}:{int(match.group(2)):02d}'
 
 def _build_providers(raw: Any) -> dict[str, ProviderSettings]:
     providers: dict[str, ProviderSettings] = {}

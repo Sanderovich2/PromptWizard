@@ -7,7 +7,7 @@ from typing import Any, Sequence
 from promptwizard import __app_name__, __version__
 from promptwizard.config import Config
 from promptwizard.errors import GUIUnavailable, InputError, PromptWizardError
-from promptwizard.export import FORMATS, render, session_to_markdown, write_output
+from promptwizard.export import FORMATS, autosave_result, render, session_to_markdown, write_output
 from promptwizard.i18n import DEFAULT_LANGUAGE, LANGUAGES, Translator, detect_system_language, get_translator, normalize_language
 from promptwizard.llm.registry import build_provider, describe_providers
 from promptwizard.pipeline import SessionResult, run
@@ -228,6 +228,9 @@ def _cmd_run(args: argparse.Namespace, config: Config, translator: Translator, p
     if not args.no_save:
         path = save_session(config, result.to_dict())
         printer.info(translator('run.saved', path=path))
+    autosaved = autosave_result(result, translator, config.autosave_dir)
+    if autosaved:
+        printer.info(translator('run.autosaved', path=autosaved))
     if args.out:
         text = render(result, args.format, translator)
         target = write_output(text, args.out)
