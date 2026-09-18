@@ -6,6 +6,8 @@ optional tkinter window, using **free LLM providers only**. It works with **no A
 setup** out of the box, and can also use a local Ollama, the free tiers of Gemini, Groq and
 OpenRouter, or a deterministic no-LLM mode.
 
+Пошаговый туториал по запуску на русском — в разделе [«Как запустить (RU)»](#как-запустить-ru) ниже.
+
 ```
 $ promptwizard "write about our product"
 
@@ -287,22 +289,135 @@ packaging/        PyInstaller spec and build scripts
 | `no API key found for groq` | Set `GROQ_API_KEY`, or put it in `.env`. |
 | `rate limit / quota exceeded` | Wait, or switch with `--provider`. |
 
-## Русский
+## Как запустить (RU)
 
-PromptWizard принимает промт, анализирует его (структура, ясность, неоднозначности, недостающие
-детали, слабые формулировки), задаёт уточняющие вопросы **сразу пачкой**, переписывает промт
-(на языке исходного промта) и объясняет правки (на языке интерфейса).
+Пошаговый туториал: установка, CLI, GUI, провайдеры, сборка. Ключи не нужны — по умолчанию
+работает безключевой провайдер `pollinations` (см. [No keys at all](#no-keys-at-all)).
+
+### 1. Установка
 
 ```bash
-promptwizard "напиши про наш продукт"      # запуск
-promptwizard --lang ru --provider groq     # провайдер и язык интерфейса
-promptwizard gui                            # окно на tkinter
-packaging\build.bat                         # сборка .exe под Windows
+git clone https://github.com/Sanderovich2/PromptWizard.git
+cd PromptWizard
+python -m venv .venv
 ```
 
-Провайдеры — только бесплатные: локальный Ollama, бесплатные тарифы Gemini / Groq / OpenRouter и
-офлайн-режим без LLM. Ключи задаются переменными окружения или файлом `.env` и не попадают в код.
-История сессий — `~/.promptwizard/sessions/sessions.jsonl`.
+```powershell
+.venv\Scripts\python.exe -m pip install -e ".[dev]"     # Windows
+```
+
+```bash
+.venv/bin/python -m pip install -e ".[dev]"             # Linux / macOS
+```
+
+Нужен Python 3.10+. После установки доступны: команда `promptwizard`, лаунчеры `run.bat`
+(Windows) / `run.sh` (Linux, macOS) и `python -m promptwizard`. Для GUI нужен tkinter: на Windows и
+macOS он есть в установщиках с python.org, на Linux — пакет `python3-tk`.
+
+### 2. Быстрый старт
+
+```powershell
+cd C:\path\to\PromptWizard
+.\run.bat "напиши короткий текст про котиков"
+```
+
+Чтобы писать просто `promptwizard`, активируй окружение: `.\\.venv\\Scripts\\Activate.ps1`.
+
+### 3. CLI
+
+**Интерактивный режим** — самый полный: запусти `run.bat` без аргументов. Программа попросит
+вставить промт (пустая строка завершает ввод), покажет проблемы, **задаст все уточняющие вопросы
+сразу** (ответы — по одной строке, пустая строка = пропустить) и выдаст улучшенный промт с
+объяснением правок. Вопросы задаются только в интерактивном терминале.
+
+```powershell
+.\run.bat "промт"                                       # сразу с промтом
+.\run.bat --no-questions "промт"                        # без вопросов
+.\run.bat --file prompt.txt                             # из файла
+.\run.bat --lang ru --out result.md --format md "промт"  # экспорт в файл
+.\run.bat --json "промт"                                # машинный вывод
+.\run.bat --provider offline "промт"                    # совсем без сети
+.\run.bat --help
+```
+
+| Флаг | Что делает |
+|---|---|
+| `--lang ru\|en` | язык интерфейса |
+| `--provider <имя>` | pollinations / ollama / gemini / groq / openrouter / offline |
+| `--model`, `--base-url` | переопределить модель или адрес провайдера |
+| `--temperature`, `--max-tokens`, `--timeout` | параметры запроса |
+| `--max-questions N` | сколько вопросов задавать (0 — ни одного) |
+| `--no-questions`, `--no-save` | пропустить вопросы / не писать сессию |
+| `--out FILE --format md\|txt\|json` | сохранить результат |
+| `--json` | результат в JSON |
+| `--home`, `--config` | где искать `~/.promptwizard` и `config.json` |
+
+Служебные команды:
+
+```powershell
+.\run.bat providers                  # кто доступен и какие модели
+.\run.bat sessions                   # история прогонов
+.\run.bat sessions --show <id>       # один прогон целиком
+.\run.bat config --init              # создать config.json
+.\run.bat config                     # текущие настройки (ключи скрыты)
+.\run.bat --version
+```
+
+### 4. GUI (tkinter)
+
+```powershell
+.\run.bat gui
+```
+
+1. Сверху — переключатель языка **ru/en**, рядом текущий провайдер и оценка.
+2. Вставь промт в поле **«Исходный промт»**.
+3. **«Анализ»** → список проблем и блок вопросов с полями для ответов.
+4. Заполни ответы (можно не все).
+5. **«Переписать»** → «Улучшенный промт» и «Изменения».
+6. **«Сохранить результат»** → диалог сохранения.
+
+Пока идёт запрос к модели, кнопки неактивны, в статусе «Работаю...». Если провайдер недоступен,
+окно не падает: показывает ошибку и её причину.
+
+### 5. Провайдеры
+
+| Что нужно | Как |
+|---|---|
+| Без ключей (по умолчанию) | `.\run.bat "промт"` — `pollinations` |
+| Совсем без сети | `--provider offline` — только правила, без модели |
+| Полностью локально | установить [Ollama](https://ollama.com), `ollama pull llama3.2`, затем `--provider ollama` |
+| Ключевой free-tier | скопировать `.env.example` в `.env`, вписать ключ (например `GROQ_API_KEY`), затем `--provider groq --model llama-3.3-70b-versatile` |
+
+Ключи читаются из переменных окружения и `.env` и никогда не попадают в код.
+
+### 6. Сборка `.exe` (Windows)
+
+```powershell
+.\packaging\build.bat
+.\dist\promptwizard.exe "промт"
+.\dist\promptwizard.exe gui
+```
+
+### 7. Linux / macOS
+
+```bash
+./run.sh "промт"
+./run.sh gui
+./packaging/build.sh
+sudo apt-get install -y python3-tk     # для GUI, если tkinter нет
+```
+
+### 8. Если что-то не так
+
+| Симптом | Что делать |
+|---|---|
+| `ModuleNotFoundError: No module named 'tkinter'` | этот Python без Tk: используй CLI, либо поставь сборку с python.org / пакет `python3-tk` |
+| `no API key found for groq` | ключ в `.env`, либо `--provider pollinations` |
+| `cannot reach the provider` | проверь сеть, либо `--provider offline` |
+| Вопросы не задаются | терминал не интерактивный: промт пришёл из аргумента или из пайпа |
+| «Режим: template» | провайдер упёрся в лимит: повтори запуск или смени `--provider` |
+
+Данные лежат в `~/.promptwizard/`: `config.json` и `sessions/sessions.jsonl` (история прогонов).
 
 ## License
 
