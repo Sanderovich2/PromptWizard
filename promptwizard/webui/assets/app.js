@@ -17,7 +17,7 @@ let outcome = null;
 let busy = false;
 
 function t(key, vars) {
-  let text = Object.prototype.hasOwnProperty.call(state.strings, key) ? state.strings[key] : key;
+  let text = Object.prototype.hasOwnProperty.call(state.strings, key) ? state.strings[key] : "";
   if (vars) {
     for (const [name, value] of Object.entries(vars)) {
       text = text.split("{" + name + "}").join(String(value));
@@ -342,9 +342,28 @@ function escapeHtml(value) {
   return node.innerHTML;
 }
 
-async function loadState(lang) {
-  const response = await fetch("/api/state?lang=" + encodeURIComponent(lang));
-  const data = await response.json();
+async function loadState(lang, attempt) {
+  const tries = attempt || 0;
+  let data;
+  try {
+    const response = await fetch("/api/state?lang=" + encodeURIComponent(lang));
+    data = await response.json();
+  } catch (error) {
+    if (tries < 3) {
+      setTimeout(() => loadState(lang, tries + 1), 700 * (tries + 1));
+      return;
+    }
+    notice("PromptWizard", "Could not load the interface strings from the local server. Reload the window.");
+    return;
+  }
+  if (!data || !data.strings || !Object.keys(data.strings).length) {
+    if (tries < 3) {
+      setTimeout(() => loadState(lang, tries + 1), 700 * (tries + 1));
+      return;
+    }
+    notice("PromptWizard", "The local server sent no interface strings. Reload the window.");
+    return;
+  }
   state.lang = data.lang;
   state.languages = data.languages || ["ru"];
   state.version = data.version;
@@ -667,8 +686,5 @@ function wireSettings() {
 
 wireSettings();
 wire();
-setStep("prompt");
-if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
-  document.documentElement.dataset.theme = "dark";
-}
 loadState("ru");
+setStep("prompt");
