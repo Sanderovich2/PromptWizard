@@ -70,20 +70,6 @@ jobs:
             ./dist/promptwizard --version
           fi
 
-      - name: Build the MSI (Windows only)
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          set -euo pipefail
-          dotnet tool install --global wix --version 5.*
-          export PATH="$PATH:$HOME/.dotnet/tools"
-          version="${GITHUB_REF_NAME#v}"
-          wix build installer/promptwizard.wxs \
-            -d Version="$version" \
-            -bindpath dist=dist -pdb "$RUNNER_TEMP/promptwizard.wixpdb" \
-            -o "dist/PromptWizard-${GITHUB_REF_NAME}-x64.msi"
-          ls -l dist/
-
       - name: Name the assets for the release
         shell: bash
         run: |
