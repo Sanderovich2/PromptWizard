@@ -66,6 +66,7 @@ def build_parser(translator: Translator, command: str='run') -> argparse.Argumen
     llm = argparse.ArgumentParser(add_help=False)
     llm.add_argument('--provider', help=translator('arg.provider.help'))
     llm.add_argument('--model', help=translator('arg.model.help'))
+    llm.add_argument('--preset', help=translator('arg.preset.help'))
     llm.add_argument('--base-url', dest='base_url', help=translator('arg.base_url.help'))
     llm.add_argument('--temperature', type=float, help=translator('arg.temperature.help'))
     llm.add_argument('--max-tokens', dest='max_tokens', type=int, help=translator('arg.max_tokens.help'))
@@ -94,6 +95,7 @@ def build_parser(translator: Translator, command: str='run') -> argparse.Argumen
         parser.add_argument('--json', action='store_true', help=translator('arg.json.help'))
     elif command == 'config':
         parser.add_argument('--init', action='store_true', help=translator('arg.init.help'))
+        parser.add_argument('--edit', action='store_true', help=translator('arg.edit.help'))
         parser.add_argument('--set', action='append', metavar='KEY=VALUE', help=translator('arg.set.help'))
     return parser
 
@@ -105,6 +107,9 @@ def build_config(args: argparse.Namespace, command: str) -> Config:
             overrides[key] = value
     config = Config.load(path=getattr(args, 'config', None), home=getattr(args, 'home', None), overrides=overrides)
     if command in ('run', 'gui'):
+        preset = getattr(args, 'preset', None)
+        if preset:
+            config.apply_preset(preset)
         provider = getattr(args, 'provider', None)
         model = getattr(args, 'model', None)
         base_url = getattr(args, 'base_url', None)
@@ -287,6 +292,10 @@ def _cmd_models(args: argparse.Namespace, config: Config, translator: Translator
 
 
 def _cmd_config(args: argparse.Namespace, config: Config, translator: Translator, printer: Printer) -> int:
+    if getattr(args, 'edit', False):
+        from promptwizard.settings import open_config
+        printer.out(translator('config.opened', path=open_config(config)))
+        return 0
     updates = getattr(args, 'set', None)
     if updates:
         from promptwizard.errors import ConfigError
@@ -303,7 +312,43 @@ def _cmd_config(args: argparse.Namespace, config: Config, translator: Translator
         if config.config_path.exists():
             printer.out(translator('config.path', path=config.config_path))
         else:
-            printer.out(translator('config.written', path=config.save()))
+            from promptwizard.settings import save_settings
+            path = config.save()
+            current = config.provider_settings()
+            save_settings(
+                config,
+                {
+                    'models': {
+                        'primary': {
+                            'provider': config.provider,
+                            'model': current.model,
+                            'alias': 'Default',
+                            'tooltip': 'The provider selected right now.',
+                        },
+                        'catalog': [
+                            {
+                                'provider': 'groq',
+                                'model': 'llama-3.3-70b-versatile',
+                                'alias': 'Groq free tier',
+                                'api_key_env': 'GROQ_API_KEY',
+                            },
+                            {
+                                'provider': 'ollama',
+                                'model': 'llama3.2',
+                                'alias': 'Local Ollama',
+                                'base_url': 'http://localhost:11434',
+                            },
+                            {
+                                'provider': 'openrouter',
+                                'model': 'meta-llama/llama-3.3-70b-instruct:free',
+                                'alias': 'OpenRouter free',
+                                'api_key_env': 'OPENROUTER_API_KEY',
+                            },
+                        ],
+                    }
+                },
+            )
+            printer.out(translator('config.written', path=path))
         return 0
     printer.out(translator('config.header'))
     printer.out(translator('config.path', path=config.config_path))

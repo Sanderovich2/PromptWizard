@@ -14,6 +14,7 @@ from promptwizard.errors import PromptWizardError
 from promptwizard.i18n import LANGUAGES, Translator, get_translator, load_catalog, normalize_language
 from promptwizard.pipeline import Session, SessionResult
 from promptwizard.settings import available_models, save_settings, settings_view
+from promptwizard.settings import open_config as open_settings_file
 from promptwizard.storage import save_session
 
 CONTENT_TYPES = {
@@ -126,6 +127,10 @@ class AppState:
         self.config = Config.load(path=self.config.config_path, home=self.config.home)
         self.translator = get_translator(self.config.lang)
         return {'settings': settings_view(self.config), 'strings': load_catalog(self.config.lang), 'lang': self.config.lang}
+
+    def open_config(self, launch: bool=True) -> dict[str, Any]:
+        path = open_settings_file(self.config, launch=bool(launch))
+        return {'path': str(path), 'settings': settings_view(self.config)}
 
     def analyze(self, payload: dict[str, Any]) -> dict[str, Any]:
         prompt = str(payload.get('prompt') or '').strip()
@@ -248,6 +253,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(self.app.rewrite(payload))
             if parsed.path == '/api/settings':
                 return self._send_json(self.app.update_settings(payload))
+            if parsed.path == '/api/config/open':
+                return self._send_json(self.app.open_config(payload.get('launch', True)))
         except LookupError:
             return self._send_json({'error': {'message': 'unknown session'}}, 404)
         except PromptWizardError as exc:

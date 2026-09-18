@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -9,7 +11,7 @@ from promptwizard.config import PROVIDER_DEFAULTS, Config
 from promptwizard.errors import ConfigError
 from promptwizard.i18n import LANGUAGES
 
-__all__ = ["available_models", "save_settings", "settings_view"]
+__all__ = ["available_models", "open_config", "save_settings", "settings_view"]
 
 SETTING_KEYS = (
     "lang",
@@ -20,6 +22,7 @@ SETTING_KEYS = (
     "max_tokens",
     "timeout",
     "max_questions",
+    "models",
 )
 PROVIDER_KEYS = ("base_url", "model", "api_key_env", "api_key", "kind")
 
@@ -38,8 +41,27 @@ def settings_view(config: Config) -> dict[str, Any]:
         "languages": list(LANGUAGES),
         "themes": ["light", "dark"],
         "providers": {name: block.to_dict() for name, block in sorted(config.providers.items())},
+        "presets": {name: preset.to_dict() for name, preset in sorted(config.presets.items())},
         "path": str(config.config_path),
     }
+
+
+def open_config(config: Config, *, launch: bool = True) -> Path:
+    target = config.config_path
+    if not target.exists():
+        save_settings(config, {})
+    if not launch:
+        return target
+    try:
+        if sys.platform.startswith("win"):
+            os.startfile(str(target))
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", str(target)])
+        else:
+            subprocess.Popen(["xdg-open", str(target)])
+    except OSError as exc:
+        raise ConfigError(f"cannot open {target}: {exc}", hint_key="error.config.open") from exc
+    return target
 
 
 def available_models(config: Config, provider: str | None = None) -> dict[str, Any]:

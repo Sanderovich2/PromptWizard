@@ -35,13 +35,27 @@
     "interrupt": "Cancelled."
   },
   "cmd": {
-    "models": { "help": "List the models the current provider offers." },
-    "run": { "help": "Analyze and rewrite a prompt (default command)." },
-    "gui": { "help": "Open the optional tkinter window." },
-    "providers": { "help": "Show configured providers and whether they are reachable." },
-    "sessions": { "help": "List saved sessions or show one of them." },
-    "config": { "help": "Show or create the configuration file." },
-    "version": { "help": "Print the version and exit." }
+    "models": {
+      "help": "List the models the current provider offers."
+    },
+    "run": {
+      "help": "Analyze and rewrite a prompt (default command)."
+    },
+    "gui": {
+      "help": "Open the optional tkinter window."
+    },
+    "providers": {
+      "help": "Show configured providers and whether they are reachable."
+    },
+    "sessions": {
+      "help": "List saved sessions or show one of them."
+    },
+    "config": {
+      "help": "Show or create the configuration file."
+    },
+    "version": {
+      "help": "Print the version and exit."
+    }
   },
   "web": {
     "settings": "Settings",
@@ -60,38 +74,95 @@
     "custom_hint": "Any OpenAI-compatible endpoint: base URL, a model id, and the environment variable that holds the key.",
     "add_provider": "Add provider",
     "provider_added": "Provider added and selected.",
-    "custom_required": "Name, base URL and model are required."
+    "custom_required": "Name, base URL and model are required.",
+    "open_config": "Open config.json"
   },
   "models": {
     "header": "Models for {provider}",
     "note": "Could not ask the provider: {reason}"
   },
   "arg": {
-    "set": { "help": "Save a setting, for example --set theme=dark --set provider=groq." },
-    "prompt": { "help": "The prompt to improve. If omitted, read from --file, stdin, or ask interactively." },
-    "file": { "help": "Read the original prompt from this file." },
-    "lang": { "help": "UI language: ru or en." },
-    "provider": { "help": "Provider to use: ollama, gemini, groq, openrouter, openai_compatible, offline." },
-    "model": { "help": "Override the model id for the selected provider." },
-    "base_url": { "help": "Override the provider base URL (for self-hosted or new free tiers)." },
-    "temperature": { "help": "Sampling temperature (0-2)." },
-    "max_tokens": { "help": "Maximum number of tokens to generate." },
-    "timeout": { "help": "Per-request timeout in seconds." },
-    "max_questions": { "help": "Maximum number of clarifying questions to ask (0 disables them)." },
-    "out": { "help": "Write the result to this file." },
-    "format": { "help": "Export format when using --out: md, txt or json." },
-    "no_questions": { "help": "Skip the clarifying questions and rewrite right away." },
-    "no_save": { "help": "Do not save this run to the session history." },
-    "json": { "help": "Print the result as JSON instead of formatted text." },
-    "home": { "help": "PromptWizard home directory (default: ~/.promptwizard)." },
-    "config": { "help": "Explicit path to config.json." },
-    "show": { "help": "Show the full record of one saved session by id." },
-    "init": { "help": "Create a default config.json if it does not exist yet." },
-    "quiet": { "help": "Suppress progress chatter; only print the final result." },
-    "fallback": { "help": "Fall back to a deterministic template when the provider fails." },
-    "limit": { "help": "Maximum number of sessions to list." },
-    "tk": { "help": "Use the tkinter window instead of the web interface." },
-    "port": { "help": "Port for the local web interface (0 picks a free one)." }
+    "set": {
+      "help": "Save a setting, for example --set theme=dark --set provider=groq."
+    },
+    "prompt": {
+      "help": "The prompt to improve. If omitted, read from --file, stdin, or ask interactively."
+    },
+    "file": {
+      "help": "Read the original prompt from this file."
+    },
+    "lang": {
+      "help": "UI language: ru or en."
+    },
+    "provider": {
+      "help": "Provider to use: ollama, gemini, groq, openrouter, openai_compatible, offline."
+    },
+    "model": {
+      "help": "Override the model id for the selected provider."
+    },
+    "base_url": {
+      "help": "Override the provider base URL (for self-hosted or new free tiers)."
+    },
+    "temperature": {
+      "help": "Sampling temperature (0-2)."
+    },
+    "max_tokens": {
+      "help": "Maximum number of tokens to generate."
+    },
+    "timeout": {
+      "help": "Per-request timeout in seconds."
+    },
+    "max_questions": {
+      "help": "Maximum number of clarifying questions to ask (0 disables them)."
+    },
+    "out": {
+      "help": "Write the result to this file."
+    },
+    "format": {
+      "help": "Export format when using --out: md, txt or json."
+    },
+    "no_questions": {
+      "help": "Skip the clarifying questions and rewrite right away."
+    },
+    "no_save": {
+      "help": "Do not save this run to the session history."
+    },
+    "json": {
+      "help": "Print the result as JSON instead of formatted text."
+    },
+    "home": {
+      "help": "PromptWizard home directory (default: ~/.promptwizard)."
+    },
+    "config": {
+      "help": "Explicit path to config.json."
+    },
+    "show": {
+      "help": "Show the full record of one saved session by id."
+    },
+    "init": {
+      "help": "Create a default config.json if it does not exist yet."
+    },
+    "quiet": {
+      "help": "Suppress progress chatter; only print the final result."
+    },
+    "fallback": {
+      "help": "Fall back to a deterministic template when the provider fails."
+    },
+    "limit": {
+      "help": "Maximum number of sessions to list."
+    },
+    "tk": {
+      "help": "Use the tkinter window instead of the web interface."
+    },
+    "port": {
+      "help": "Port for the local web interface (0 picks a free one)."
+    },
+    "preset": {
+      "help": "Use a named model preset from the models block of config.json."
+    },
+    "edit": {
+      "help": "Open config.json in the default editor."
+    }
   },
   "run": {
     "title": "PromptWizard",
@@ -161,27 +232,91 @@
     "none": "No significant changes were needed."
   },
   "question": {
-    "format": { "text": "In what form should the answer come?", "why": "The output format is not specified, so the model has to guess it.", "options": "short summary | bullet list | table | code | free text" },
-    "audience": { "text": "Who will read the answer?", "why": "The audience decides vocabulary and level of detail.", "options": "colleague | client | beginner | expert" },
-    "length": { "text": "How long should the answer be?", "why": "Without a length limit the model writes either too much or too little.", "options": "one paragraph | a few paragraphs | one page | as short as possible" },
-    "constraints": { "text": "What must the answer avoid or respect?", "why": "Explicit constraints keep the answer inside the intended boundaries.", "options": "no jargon | facts only | no examples | must cite sources" },
-    "examples": { "text": "Can you give one example of the answer you expect?", "why": "An example pins down the style far better than an adjective.", "options": "" },
-    "context": { "text": "What is the background: who is it for, and what happens with the result?", "why": "Context removes assumptions the model would otherwise invent.", "options": "" },
-    "tone": { "text": "What tone should the answer use?", "why": "Tone is rarely specified, and the model then picks a neutral default.", "options": "formal | neutral | friendly | technical" }
+    "format": {
+      "text": "In what form should the answer come?",
+      "why": "The output format is not specified, so the model has to guess it.",
+      "options": "short summary | bullet list | table | code | free text"
+    },
+    "audience": {
+      "text": "Who will read the answer?",
+      "why": "The audience decides vocabulary and level of detail.",
+      "options": "colleague | client | beginner | expert"
+    },
+    "length": {
+      "text": "How long should the answer be?",
+      "why": "Without a length limit the model writes either too much or too little.",
+      "options": "one paragraph | a few paragraphs | one page | as short as possible"
+    },
+    "constraints": {
+      "text": "What must the answer avoid or respect?",
+      "why": "Explicit constraints keep the answer inside the intended boundaries.",
+      "options": "no jargon | facts only | no examples | must cite sources"
+    },
+    "examples": {
+      "text": "Can you give one example of the answer you expect?",
+      "why": "An example pins down the style far better than an adjective.",
+      "options": ""
+    },
+    "context": {
+      "text": "What is the background: who is it for, and what happens with the result?",
+      "why": "Context removes assumptions the model would otherwise invent.",
+      "options": ""
+    },
+    "tone": {
+      "text": "What tone should the answer use?",
+      "why": "Tone is rarely specified, and the model then picks a neutral default.",
+      "options": "formal | neutral | friendly | technical"
+    }
   },
   "issue": {
-    "clarity": { "title": "The goal is not stated in one sentence", "detail": "State the outcome you want first; the rest of the instructions can hang off it." },
-    "structure": { "title": "The prompt is one undifferentiated block", "detail": "Split it into short labelled parts (task, context, constraints, format); a model reads sections more reliably than a wall of text." },
-    "ambiguity": { "title": "Vague wording leaves room for several readings", "detail": "Replace words like something, some or etc with the concrete thing you mean." },
-    "missing_detail": { "title": "Too little information to act on", "detail": "Add the specifics: what exactly, for whom, over what material, with what limits." },
-    "weak_phrasing": { "title": "Instructions are phrased as wishes, not as tasks", "detail": "Turn maybe-you-could into a direct instruction; imperative phrasing is followed more reliably." },
-    "constraints": { "title": "No constraints or limits are given", "detail": "Say what must be avoided, the maximum length, and any hard rule." },
-    "format": { "title": "The expected output format is not specified", "detail": "Say whether you want prose, bullets, a table, JSON or code, and roughly how long." },
-    "audience": { "title": "The audience is not specified", "detail": "Name who reads the answer; it fixes vocabulary and the level of detail." },
-    "examples": { "title": "No example of a good answer", "detail": "One short example removes more ambiguity than a paragraph of adjectives." },
-    "scope": { "title": "The scope of the task is unclear", "detail": "State where the task starts and stops, and what is explicitly out of scope." },
-    "tone": { "title": "The tone of the answer is unspecified", "detail": "Say whether the answer should be formal, neutral or friendly." },
-    "context": { "title": "The background is missing", "detail": "Explain why you need the answer and what will be done with it." }
+    "clarity": {
+      "title": "The goal is not stated in one sentence",
+      "detail": "State the outcome you want first; the rest of the instructions can hang off it."
+    },
+    "structure": {
+      "title": "The prompt is one undifferentiated block",
+      "detail": "Split it into short labelled parts (task, context, constraints, format); a model reads sections more reliably than a wall of text."
+    },
+    "ambiguity": {
+      "title": "Vague wording leaves room for several readings",
+      "detail": "Replace words like something, some or etc with the concrete thing you mean."
+    },
+    "missing_detail": {
+      "title": "Too little information to act on",
+      "detail": "Add the specifics: what exactly, for whom, over what material, with what limits."
+    },
+    "weak_phrasing": {
+      "title": "Instructions are phrased as wishes, not as tasks",
+      "detail": "Turn maybe-you-could into a direct instruction; imperative phrasing is followed more reliably."
+    },
+    "constraints": {
+      "title": "No constraints or limits are given",
+      "detail": "Say what must be avoided, the maximum length, and any hard rule."
+    },
+    "format": {
+      "title": "The expected output format is not specified",
+      "detail": "Say whether you want prose, bullets, a table, JSON or code, and roughly how long."
+    },
+    "audience": {
+      "title": "The audience is not specified",
+      "detail": "Name who reads the answer; it fixes vocabulary and the level of detail."
+    },
+    "examples": {
+      "title": "No example of a good answer",
+      "detail": "One short example removes more ambiguity than a paragraph of adjectives."
+    },
+    "scope": {
+      "title": "The scope of the task is unclear",
+      "detail": "State where the task starts and stops, and what is explicitly out of scope."
+    },
+    "tone": {
+      "title": "The tone of the answer is unspecified",
+      "detail": "Say whether the answer should be formal, neutral or friendly."
+    },
+    "context": {
+      "title": "The background is missing",
+      "detail": "Explain why you need the answer and what will be done with it."
+    }
   },
   "providers": {
     "header": "Providers",
@@ -204,7 +339,8 @@
     "header": "Effective configuration",
     "path": "Config file: {path}",
     "written": "Wrote {path}",
-    "note": "API keys are redacted; set them via environment variables or .env."
+    "note": "API keys are redacted; set them via environment variables or .env.",
+    "opened": "Opened {path}"
   },
   "gui": {
     "title": "PromptWizard",
@@ -251,7 +387,9 @@
       "range": "A configuration value is out of range. Check temperature (0-2), timeout (>0), max_tokens (>0) and max_questions (0-20).",
       "read": "The configuration file could not be read. Check that the path exists and is readable.",
       "write": "The configuration file could not be written. Check the directory permissions.",
-      "invalid": "The configuration file is not valid JSON with an object at the top level."
+      "invalid": "The configuration file is not valid JSON with an object at the top level.",
+      "open": "Could not open the config file in an editor; open it by hand.",
+      "preset": "That model preset is not defined in config.json. Add it under the models block."
     },
     "provider": {
       "unreachable": "The provider {provider} could not be reached ({reason}). Check your network, or start the local server (for example: ollama serve).",

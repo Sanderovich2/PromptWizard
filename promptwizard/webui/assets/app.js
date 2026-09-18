@@ -464,6 +464,14 @@ function wireSettings() {
   $("provider-select").addEventListener("change", (event) => loadModels(event.target.value));
   $("settings-save").addEventListener("click", saveSettings);
   $("custom-save").addEventListener("click", addCustomProvider);
+  $("open-config").addEventListener("click", async () => {
+    try {
+      const data = await post("/api/config/open", { launch: true });
+      $("settings-note").textContent = data.path || "";
+    } catch (error) {
+      $("settings-note").textContent = error.message;
+    }
+  });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") $("drawer").hidden = true;
   });

@@ -50,6 +50,33 @@ def load_dotenv(paths: tuple[Path, ...] | list[Path] | None=None, *, override: b
     return loaded
 
 @dataclass
+class ModelPreset:
+    name: str = ''
+    provider: str = ''
+    model: str = ''
+    base_url: str = ''
+    api_key_env: str = ''
+    alias: str = ''
+    tooltip: str = ''
+
+    @property
+    def label(self) -> str:
+        return self.alias or self.name
+
+    def to_dict(self) -> dict[str, Any]:
+        data: dict[str, Any] = {'provider': self.provider, 'model': self.model}
+        if self.alias:
+            data['alias'] = self.alias
+        if self.base_url:
+            data['base_url'] = self.base_url
+        if self.api_key_env:
+            data['api_key_env'] = self.api_key_env
+        if self.tooltip:
+            data['tooltip'] = self.tooltip
+        return data
+
+
+@dataclass
 class ProviderSettings:
     name: str
     base_url: str = ''
@@ -84,6 +111,7 @@ class Config:
     timeout: float = 60.0
     max_questions: int = 6
     providers: dict[str, ProviderSettings] = field(default_factory=dict)
+    presets: dict[str, ModelPreset] = field(default_factory=dict)
     source: Path | None = None
 
     @property
@@ -113,6 +141,7 @@ class Config:
         config.timeout = _as_float(_pick(raw, 'timeout', os.environ.get('PROMPTWIZARD_TIMEOUT'), config.timeout), 'timeout')
         config.max_questions = _as_int(_pick(raw, 'max_questions', os.environ.get('PROMPTWIZARD_MAX_QUESTIONS'), config.max_questions), 'max_questions')
         config.providers = _build_providers(raw.get('providers'))
+        config.presets = _build_presets(raw.get('models'))
         if overrides:
             for key, value in overrides.items():
                 if value is None:
@@ -148,6 +177,25 @@ class Config:
             return self.providers[target]
         default_kind = 'openai_compatible'
         return ProviderSettings(name=target, kind=default_kind)
+
+    def apply_preset(self, name: str) -> 'ModelPreset':
+        key = str(name).strip().lower()
+        if key not in self.presets:
+            available = ', '.join(sorted(self.presets)) or 'none defined'
+            raise ConfigError(f'unknown model preset {name!r} (available: {available})', hint_key='error.config.preset')
+        preset = self.presets[key]
+        if preset.provider:
+            self.provider = preset.provider
+        target = self.provider
+        if target not in self.providers:
+            self.providers[target] = ProviderSettings(name=target)
+        if preset.model:
+            self.providers[target].model = preset.model
+        if preset.base_url:
+            self.providers[target].base_url = preset.base_url
+        if preset.api_key_env:
+            self.providers[target].api_key_env = preset.api_key_env
+        return preset
 
     def resolve_api_key(self, name: str | None=None) -> str | None:
         settings = self.provider_settings(name)
@@ -231,6 +279,35 @@ def _build_providers(raw: Any) -> dict[str, ProviderSettings]:
             settings.kind = 'openai_compatible'
         providers[str(name)] = settings
     return providers
+
+def _build_presets(raw: Any) -> dict[str, ModelPreset]:
+    presets: dict[str, ModelPreset] = {}
+    if not isinstance(raw, Mapping):
+        return presets
+    entries: list[tuple[str, Mapping[str, Any]]] = []
+    for name, block in raw.items():
+        if name == 'catalog' and isinstance(block, list):
+            for index, item in enumerate(block):
+                if isinstance(item, Mapping):
+                    entries.append((str(item.get('alias') or item.get('name') or f'catalog-{index + 1}'), item))
+            continue
+        if isinstance(block, Mapping):
+            entries.append((str(name), block))
+    for name, block in entries:
+        key = str(block.get('name') or name).strip().lower().replace(' ', '-')
+        if not key:
+            continue
+        presets[key] = ModelPreset(
+            name=key,
+            provider=str(block.get('provider') or '').strip(),
+            model=str(block.get('model') or '').strip(),
+            base_url=str(block.get('base_url') or block.get('baseURL') or '').strip(),
+            api_key_env=str(block.get('api_key_env') or block.get('apiKeyEnv') or '').strip(),
+            alias=str(block.get('alias') or '').strip(),
+            tooltip=str(block.get('tooltip') or '').strip(),
+        )
+    return presets
+
 
 def _read_json_object(path: Path) -> dict[str, Any]:
     try:
