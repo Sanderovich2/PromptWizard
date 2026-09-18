@@ -132,7 +132,7 @@ class AppState:
         path = open_settings_file(self.config, launch=bool(launch))
         return {'path': str(path), 'settings': settings_view(self.config)}
 
-    def sessions(self, limit: int=30) -> dict[str, Any]:
+    def saved_sessions(self, limit: int=30) -> dict[str, Any]:
         from promptwizard.storage import list_sessions
         records = list_sessions(self.config, max(1, min(int(limit), 200)))
         return {'sessions': [
@@ -286,7 +286,7 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == '/api/sessions':
             limit = parse_qs(parsed.query).get('limit', ['30'])[0]
             try:
-                return self._send_json(self.app.sessions(int(limit)))
+                return self._send_json(self.app.saved_sessions(int(limit)))
             except ValueError:
                 return self._send_json({'error': {'message': 'limit must be a number'}}, 400)
         if parsed.path.startswith('/api/sessions/'):
