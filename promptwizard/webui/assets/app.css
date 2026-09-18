@@ -17,6 +17,7 @@
   --mono: "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
   --step: 8px;
   --radius: 3px;
+  --base-size: 15px;
 }
 
 * { box-sizing: border-box; }
@@ -27,7 +28,7 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font: 15px/1.55 var(--sans);
+  font: var(--base-size)/1.55 var(--sans);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -308,6 +309,11 @@ button.icon { padding: 2px 10px; font-size: 16px; line-height: 1.2; }
   font-size: 13px;
   color: var(--ink);
 }
+
+.check { display: flex; align-items: center; gap: 8px; margin: calc(var(--step) * 1.5) 0; font-size: 13px; color: var(--ink-soft); }
+.check input { width: 15px; height: 15px; accent-color: var(--accent); }
+.adv { margin-top: calc(var(--step) * 2); border-top: 1px solid var(--rule); padding-top: var(--step); }
+.adv summary { cursor: pointer; font-size: 12px; color: var(--ink-faint); }
 
 [data-theme="dark"] {
   --paper: #14151a;

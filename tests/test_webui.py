@@ -119,7 +119,7 @@ def test_state_exposes_settings(web):
     assert status == 200
     assert payload["settings"]["theme"] == "light"
     assert payload["settings"]["provider"] == "offline"
-    assert payload["themes"] == ["light", "dark"]
+    assert {"light", "dark"} <= set(payload["themes"])
     assert "web.settings" in payload["strings"]
 
 

@@ -106,7 +106,7 @@ class AppState:
 
     def update_settings(self, payload: dict[str, Any]) -> dict[str, Any]:
         updates: dict[str, Any] = {}
-        for key in ('lang', 'theme', 'provider', 'model', 'temperature', 'max_tokens', 'timeout', 'max_questions'):
+        for key in ('lang', 'theme', 'provider', 'model', 'temperature', 'max_tokens', 'timeout', 'max_questions', 'font', 'font_size'):
             if key in payload and payload[key] not in (None, ''):
                 updates[key] = payload[key]
         blocks: dict[str, Any] = {}
@@ -131,6 +131,13 @@ class AppState:
     def open_config(self, launch: bool=True) -> dict[str, Any]:
         path = open_settings_file(self.config, launch=bool(launch))
         return {'path': str(path), 'settings': settings_view(self.config)}
+
+    def set_autostart(self, enabled: Any=None) -> dict[str, Any]:
+        from promptwizard.autostart import set_enabled, state
+        if enabled is None:
+            return state()
+        set_enabled(bool(enabled))
+        return state()
 
     def analyze(self, payload: dict[str, Any]) -> dict[str, Any]:
         prompt = str(payload.get('prompt') or '').strip()
@@ -255,6 +262,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(self.app.update_settings(payload))
             if parsed.path == '/api/config/open':
                 return self._send_json(self.app.open_config(payload.get('launch', True)))
+            if parsed.path == '/api/autostart':
+                return self._send_json(self.app.set_autostart(payload.get('enabled')))
         except LookupError:
             return self._send_json({'error': {'message': 'unknown session'}}, 404)
         except PromptWizardError as exc:

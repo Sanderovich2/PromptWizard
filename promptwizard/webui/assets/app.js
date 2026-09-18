@@ -376,7 +376,24 @@ function wire() {
 }
 
 function applyTheme(theme) {
-  document.documentElement.dataset.theme = state.themes.includes(theme) ? theme : "light";
+  const chosen = state.themes.includes(theme) ? theme : "light";
+  const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.dataset.theme = chosen === "auto" ? (prefersDark ? "dark" : "light") : chosen;
+}
+
+function applyTypography() {
+  const settings = state.settings || {};
+  const size = Number(settings.font_size) || 15;
+  document.documentElement.style.setProperty("--base-size", size + "px");
+  const family = (settings.font || "").trim();
+  if (family) {
+    document.documentElement.style.setProperty(
+      "--sans",
+      '"' + family + '", "Segoe UI", "Helvetica Neue", Arial, sans-serif'
+    );
+  } else {
+    document.documentElement.style.removeProperty("--sans");
+  }
 }
 
 function fillSettings() {
@@ -393,6 +410,26 @@ function fillSettings() {
     select.append(option);
   });
   $("model-input").value = settings.model || "";
+  const fontSelect = $("font");
+  fontSelect.textContent = "";
+  (settings.fonts || [""]).forEach((name) => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name ? name : t("web.font_default");
+    option.selected = name === (settings.font || "");
+    fontSelect.append(option);
+  });
+  $("font-size").value = settings.font_size || 15;
+  const auto = settings.autostart || {};
+  $("autostart").checked = Boolean(auto.enabled);
+  $("autostart").disabled = !auto.supported;
+  $("autostart-note").textContent = auto.supported
+    ? (auto.enabled && auto.command ? auto.command : t("web.autostart_hint"))
+    : t("web.autostart_unsupported");
+  $("set-max-questions").value = settings.max_questions;
+  $("set-temperature").value = settings.temperature;
+  $("set-max-tokens").value = settings.max_tokens;
+  applyTypography();
   $("config-path").textContent = settings.path || "";
   loadModels(settings.provider);
 }
@@ -417,7 +454,16 @@ async function loadModels(provider) {
 }
 
 async function saveSettings() {
-  const payload = { theme: $("theme").value, provider: $("provider-select").value, model: $("model-input").value.trim() };
+  const payload = {
+    theme: $("theme").value,
+    provider: $("provider-select").value,
+    model: $("model-input").value.trim(),
+    font: $("font").value,
+    font_size: Number($("font-size").value) || 15,
+    max_questions: Number($("set-max-questions").value),
+    temperature: Number($("set-temperature").value),
+    max_tokens: Number($("set-max-tokens").value),
+  };
   try {
     const data = await post("/api/settings", payload);
     state.settings = data.settings || state.settings;
@@ -461,6 +507,23 @@ function wireSettings() {
     $("drawer").hidden = true;
   });
   $("theme").addEventListener("change", (event) => applyTheme(event.target.value));
+  $("font").addEventListener("change", () => {
+    state.settings = Object.assign({}, state.settings, { font: $("font").value });
+    applyTypography();
+  });
+  $("font-size").addEventListener("input", () => {
+    state.settings = Object.assign({}, state.settings, { font_size: Number($("font-size").value) || 15 });
+    applyTypography();
+  });
+  $("autostart").addEventListener("change", async () => {
+    try {
+      const data = await post("/api/autostart", { enabled: $("autostart").checked });
+      $("autostart").checked = Boolean(data.enabled);
+      $("autostart-note").textContent = data.enabled ? (data.command || t("web.autostart_on")) : t("web.autostart_off");
+    } catch (error) {
+      $("autostart-note").textContent = error.message;
+    }
+  });
   $("provider-select").addEventListener("change", (event) => loadModels(event.target.value));
   $("settings-save").addEventListener("click", saveSettings);
   $("custom-save").addEventListener("click", addCustomProvider);

@@ -75,7 +75,20 @@
     "add_provider": "Добавить провайдера",
     "provider_added": "Провайдер добавлен и выбран.",
     "custom_required": "Нужны имя, base URL и модель.",
-    "open_config": "Открыть config.json"
+    "open_config": "Открыть config.json",
+    "theme_auto": "Как в системе",
+    "font": "Шрифт интерфейса",
+    "font_default": "Как в теме",
+    "font_size": "Размер шрифта",
+    "autostart": "Запускать вместе с системой",
+    "autostart_hint": "Приложение откроется после входа в Windows.",
+    "autostart_on": "Автозапуск включён.",
+    "autostart_off": "Автозапуск выключен.",
+    "autostart_unsupported": "Автозапуск реализован только для Windows.",
+    "advanced": "Дополнительно",
+    "label_questions": "Вопросов за запуск",
+    "label_temperature": "Температура",
+    "label_tokens": "Максимум токенов"
   },
   "models": {
     "header": "Модели для {provider}",
@@ -340,7 +353,8 @@
     "path": "Файл конфигурации: {path}",
     "written": "Записан {path}",
     "note": "API-ключи скрыты; задавай их переменными окружения или через .env.",
-    "opened": "Открыт {path}"
+    "opened": "Открыт {path}",
+    "saved": "Сохранено {path}"
   },
   "gui": {
     "title": "PromptWizard",
@@ -389,7 +403,8 @@
       "write": "Не удалось записать файл конфигурации. Проверь права на каталог.",
       "invalid": "Файл конфигурации — не валидный JSON с объектом на верхнем уровне.",
       "open": "Не удалось открыть файл конфигурации в редакторе; открой его вручную.",
-      "preset": "Такого пресета нет в config.json. Добавь его в блок models."
+      "preset": "Такого пресета нет в config.json. Добавь его в блок models.",
+      "autostart": "Не удалось изменить запись автозапуска."
     },
     "provider": {
       "unreachable": "Провайдер {provider} недоступен ({reason}). Проверь сеть или запусти локальный сервер (например: ollama serve).",

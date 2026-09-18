@@ -75,7 +75,20 @@
     "add_provider": "Add provider",
     "provider_added": "Provider added and selected.",
     "custom_required": "Name, base URL and model are required.",
-    "open_config": "Open config.json"
+    "open_config": "Open config.json",
+    "theme_auto": "Follow the system",
+    "font": "Interface font",
+    "font_default": "Theme default",
+    "font_size": "Font size",
+    "autostart": "Start with the system",
+    "autostart_hint": "The app will open after you sign in to Windows.",
+    "autostart_on": "Autostart enabled.",
+    "autostart_off": "Autostart disabled.",
+    "autostart_unsupported": "Autostart is only wired up on Windows.",
+    "advanced": "Advanced",
+    "label_questions": "Questions per run",
+    "label_temperature": "Temperature",
+    "label_tokens": "Max tokens"
   },
   "models": {
     "header": "Models for {provider}",
@@ -340,7 +353,8 @@
     "path": "Config file: {path}",
     "written": "Wrote {path}",
     "note": "API keys are redacted; set them via environment variables or .env.",
-    "opened": "Opened {path}"
+    "opened": "Opened {path}",
+    "saved": "Saved {path}"
   },
   "gui": {
     "title": "PromptWizard",
@@ -389,7 +403,8 @@
       "write": "The configuration file could not be written. Check the directory permissions.",
       "invalid": "The configuration file is not valid JSON with an object at the top level.",
       "open": "Could not open the config file in an editor; open it by hand.",
-      "preset": "That model preset is not defined in config.json. Add it under the models block."
+      "preset": "That model preset is not defined in config.json. Add it under the models block.",
+      "autostart": "Could not change the autostart entry."
     },
     "provider": {
       "unreachable": "The provider {provider} could not be reached ({reason}). Check your network, or start the local server (for example: ollama serve).",

@@ -7,7 +7,8 @@ import sys
 from pathlib import Path
 from typing import Any, Mapping
 
-from promptwizard.config import PROVIDER_DEFAULTS, Config
+from promptwizard.autostart import state as autostart_state
+from promptwizard.config import FONTS, PROVIDER_DEFAULTS, Config
 from promptwizard.errors import ConfigError
 from promptwizard.i18n import LANGUAGES
 
@@ -23,6 +24,8 @@ SETTING_KEYS = (
     "timeout",
     "max_questions",
     "models",
+    "font",
+    "font_size",
 )
 PROVIDER_KEYS = ("base_url", "model", "api_key_env", "api_key", "kind")
 
@@ -32,6 +35,8 @@ def settings_view(config: Config) -> dict[str, Any]:
     return {
         "lang": config.lang,
         "theme": config.theme,
+        "font": config.font,
+        "font_size": config.font_size,
         "provider": config.provider,
         "model": settings.model,
         "temperature": config.temperature,
@@ -42,6 +47,8 @@ def settings_view(config: Config) -> dict[str, Any]:
         "themes": ["light", "dark"],
         "providers": {name: block.to_dict() for name, block in sorted(config.providers.items())},
         "presets": {name: preset.to_dict() for name, preset in sorted(config.presets.items())},
+        "fonts": list(FONTS),
+        "autostart": autostart_state(),
         "path": str(config.config_path),
     }
 
