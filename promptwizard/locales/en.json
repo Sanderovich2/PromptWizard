@@ -88,7 +88,11 @@
     "advanced": "Advanced",
     "label_questions": "Questions per run",
     "label_temperature": "Temperature",
-    "label_tokens": "Max tokens"
+    "label_tokens": "Max tokens",
+    "presets": "Model preset",
+    "preset_none": "Choose a preset",
+    "preset_applied": "Preset applied: {name}",
+    "ask_questions": "Ask clarifying questions"
   },
   "models": {
     "header": "Models for {provider}",

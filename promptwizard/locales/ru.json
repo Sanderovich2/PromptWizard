@@ -88,7 +88,11 @@
     "advanced": "Дополнительно",
     "label_questions": "Вопросов за запуск",
     "label_temperature": "Температура",
-    "label_tokens": "Максимум токенов"
+    "label_tokens": "Максимум токенов",
+    "presets": "Пресет модели",
+    "preset_none": "Выбери пресет",
+    "preset_applied": "Пресет применён: {name}",
+    "ask_questions": "Задавать уточняющие вопросы"
   },
   "models": {
     "header": "Модели для {provider}",

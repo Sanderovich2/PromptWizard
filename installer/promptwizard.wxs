@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+      Name="PromptWizard"
+      Manufacturer="Sanderovich2"
+      Version="$(Version)"
+      UpgradeCode="8F3B1C42-5D6E-4A19-9E27-1C6A4B7D2E31"
+      Scope="perUser"
+      Compressed="yes">
+
+    <SummaryInformation Description="PromptWizard $(Version)" Manufacturer="Sanderovich2" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of PromptWizard is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="INSTALLFOLDER" Name="PromptWizard">
+        <Files Include="!(bindpath.dist)\promptwizard.exe" />
+        <Files Include="!(bindpath.dist)\promptwizard-gui.exe" />
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="StartMenuShortcuts" Guid="C2A7E4D1-9B38-4F5A-8D74-6E1B0A3F9C55">
+        <Shortcut Id="GuiShortcut"
+                  Name="PromptWizard"
+                  Description="Improve a prompt: analyze it, answer the questions, get a rewrite"
+                  Target="[INSTALLFOLDER]promptwizard-gui.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <Shortcut Id="CliShortcut"
+                  Name="PromptWizard (command line)"
+                  Target="[INSTALLFOLDER]promptwizard.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <RemoveFolder Id="RemoveProgramMenu" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\PromptWizard" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+  </Package>
+</Wix>

@@ -410,6 +410,21 @@ function fillSettings() {
     select.append(option);
   });
   $("model-input").value = settings.model || "";
+  const presetSelect = $("preset");
+  presetSelect.textContent = "";
+  const none = document.createElement("option");
+  none.value = "";
+  none.textContent = t("web.preset_none");
+  presetSelect.append(none);
+  Object.entries(settings.presets || {}).forEach(([name, preset]) => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = preset.alias || name;
+    option.title = preset.tooltip || "";
+    presetSelect.append(option);
+  });
+  $("ask-questions").checked = Number(settings.max_questions) > 0;
+  $("set-max-questions").value = settings.max_questions;
   const fontSelect = $("font");
   fontSelect.textContent = "";
   (settings.fonts || [""]).forEach((name) => {
@@ -426,6 +441,7 @@ function fillSettings() {
   $("autostart-note").textContent = auto.supported
     ? (auto.enabled && auto.command ? auto.command : t("web.autostart_hint"))
     : t("web.autostart_unsupported");
+  $("set-max-questions").value = settings.max_questions;
   $("set-max-questions").value = settings.max_questions;
   $("set-temperature").value = settings.temperature;
   $("set-max-tokens").value = settings.max_tokens;
@@ -523,6 +539,19 @@ function wireSettings() {
     } catch (error) {
       $("autostart-note").textContent = error.message;
     }
+  });
+  $("ask-questions").addEventListener("change", () => {
+    $("set-max-questions").value = $("ask-questions").checked ? 6 : 0;
+  });
+  $("preset").addEventListener("change", async () => {
+    const name = $("preset").value;
+    if (!name) return;
+    const preset = (state.settings.presets || {})[name];
+    if (!preset) return;
+    $("provider-select").value = preset.provider || $("provider-select").value;
+    $("model-input").value = preset.model || $("model-input").value;
+    await saveSettings();
+    $("settings-note").textContent = t("web.preset_applied", { name: preset.alias || name });
   });
   $("provider-select").addEventListener("change", (event) => loadModels(event.target.value));
   $("settings-save").addEventListener("click", saveSettings);
