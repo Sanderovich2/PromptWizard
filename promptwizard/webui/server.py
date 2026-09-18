@@ -9,13 +9,18 @@ from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
 from promptwizard import __version__
+from promptwizard.batch import run_batch, split_prompts
 from promptwizard.config import THEMES, Config
+from promptwizard.drafts import add_draft, clear_drafts as drop_all_drafts, list_drafts, remove_draft
 from promptwizard.errors import PromptWizardError
+from promptwizard.export import autosave_result
 from promptwizard.i18n import LANGUAGES, Translator, get_translator, load_catalog, normalize_language
+from promptwizard.llm.registry import describe_providers
 from promptwizard.pipeline import Session, SessionResult
 from promptwizard.settings import available_models, save_settings, settings_view
 from promptwizard.settings import open_config as open_settings_file
 from promptwizard.storage import save_session
+from promptwizard.update import check_for_update
 
 CONTENT_TYPES = {
     '.html': 'text/html; charset=utf-8',
@@ -73,6 +78,14 @@ def _result_json(result: SessionResult, saved: str='') -> dict[str, Any]:
         'provider': result.provider,
         'model': result.model,
         'language': result.prompt_language,
+        'original_prompt': result.original_prompt,
+        'translation': result.translated_prompt,
+        'stats': {
+            'duration_ms': result.duration_ms,
+            'tokens_in': result.tokens_in,
+            'tokens_out': result.tokens_out,
+            'tokens_total': result.tokens_in + result.tokens_out,
+        },
         'saved': saved,
         'rewrite': None
         if rewrite is None
@@ -107,11 +120,31 @@ class AppState:
     def models(self, provider: str | None=None) -> dict[str, Any]:
         return available_models(self.config, provider)
 
+    def providers(self) -> dict[str, Any]:
+        return {'providers': [
+            {
+                'name': status.name,
+                'available': status.available,
+                'detail': status.detail,
+                'models': list(status.models),
+                'requires_key': status.requires_key,
+                'key_present': status.key_present,
+            }
+            for status in describe_providers(self.config)
+        ]}
+
     def update_settings(self, payload: dict[str, Any]) -> dict[str, Any]:
         updates: dict[str, Any] = {}
-        for key in ('lang', 'theme', 'provider', 'model', 'temperature', 'max_tokens', 'timeout', 'max_questions', 'font', 'font_size'):
-            if key in payload and payload[key] not in (None, ''):
-                updates[key] = payload[key]
+        for key in ('lang', 'theme', 'provider', 'model', 'temperature', 'max_tokens', 'timeout', 'max_questions', 'font', 'font_size', 'system_analyzer', 'system_rewriter', 'auto_copy', 'autosave_dir', 'theme_day_start', 'theme_night_start', 'translate_prompt', 'check_updates'):
+            if key not in payload:
+                continue
+            value = payload[key]
+            if key in ('system_analyzer', 'system_rewriter', 'autosave_dir'):
+                updates[key] = '' if value is None else str(value)
+            elif key in ('auto_copy', 'translate_prompt', 'check_updates'):
+                updates[key] = bool(value)
+            elif value not in (None, ''):
+                updates[key] = value
         blocks: dict[str, Any] = {}
         custom = payload.get('providers')
         if custom:
@@ -164,6 +197,14 @@ class AppState:
             'provider': record.get('provider', ''),
             'model': record.get('model', ''),
             'language': record.get('prompt_language', ''),
+            'original_prompt': record.get('original_prompt', ''),
+            'translation': record.get('translated_prompt', ''),
+            'stats': {
+                'duration_ms': int(record.get('duration_ms') or 0),
+                'tokens_in': int(record.get('tokens_in') or 0),
+                'tokens_out': int(record.get('tokens_out') or 0),
+                'tokens_total': int(record.get('tokens_in') or 0) + int(record.get('tokens_out') or 0),
+            },
             'saved': '',
             'mode': record.get('mode', ''),
             'rewrite': {
@@ -184,6 +225,7 @@ class AppState:
         prompt = str(payload.get('prompt') or '').strip()
         if not prompt:
             raise ValueError('empty prompt')
+        add_draft(self.config, prompt)
         lang = normalize_language(str(payload.get('lang') or self.config.lang))
         config = self.config
         provider = payload.get('provider') or None
@@ -213,6 +255,7 @@ class AppState:
             'provider': session.provider.name,
             'model': session.provider.model or '-',
             'language': session.prompt_language,
+            'translation': session.translated_prompt or '',
         }
 
     def rewrite(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -226,7 +269,44 @@ class AppState:
         session.run_rewrite()
         result = session.result()
         path = save_session(self.config, result.to_dict())
-        return _result_json(result, str(path))
+        response = _result_json(result, str(path))
+        saved = autosave_result(result, self.translator, self.config.autosave_dir)
+        response['autosaved'] = str(saved or '')
+        return response
+
+    def drafts(self) -> dict[str, Any]:
+        return {'drafts': list_drafts(self.config)}
+
+    def drop_draft(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return {'drafts': remove_draft(self.config, str(payload.get('prompt') or ''))}
+
+    def clear_drafts(self) -> dict[str, Any]:
+        return {'drafts': drop_all_drafts(self.config)}
+
+    def batch(self, payload: dict[str, Any]) -> dict[str, Any]:
+        raw = payload.get('prompts')
+        prompts = split_prompts(raw) if isinstance(raw, str) else [str(item) for item in (raw or [])]
+        if not prompts:
+            raise ValueError('no prompts')
+        translator = get_translator(normalize_language(str(payload.get('lang') or self.config.lang)))
+        results: list[dict[str, Any]] = []
+        for result in run_batch(self.config, translator, prompts):
+            path = save_session(self.config, result.to_dict())
+            autosaved = autosave_result(result, translator, self.config.autosave_dir)
+            entry = _result_json(result, str(path))
+            entry['autosaved'] = str(autosaved or '')
+            entry['prompt'] = result.original_prompt
+            entry['score'] = result.analysis.score
+            entry['summary'] = result.analysis.summary
+            results.append(entry)
+            add_draft(self.config, result.original_prompt)
+        return {'results': results}
+
+    def update(self) -> dict[str, Any]:
+        try:
+            return check_for_update(__version__)
+        except Exception as exc:
+            return {'current': __version__, 'latest': '', 'url': '', 'newer': False, 'error': str(getattr(exc, 'message', exc))}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -286,6 +366,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(self.app.models(requested))
             except PromptWizardError as exc:
                 return self._send_json(_settings_error(self.app.translator, exc), 400)
+        if parsed.path == '/api/providers':
+            return self._send_json(self.app.providers())
+        if parsed.path == '/api/drafts':
+            return self._send_json(self.app.drafts())
+        if parsed.path == '/api/update':
+            return self._send_json(self.app.update())
         if parsed.path == '/api/sessions':
             limit = parse_qs(parsed.query).get('limit', ['30'])[0]
             try:
@@ -311,12 +397,18 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(self.app.analyze(payload))
             if parsed.path == '/api/rewrite':
                 return self._send_json(self.app.rewrite(payload))
+            if parsed.path == '/api/batch':
+                return self._send_json(self.app.batch(payload))
             if parsed.path == '/api/settings':
                 return self._send_json(self.app.update_settings(payload))
             if parsed.path == '/api/config/open':
                 return self._send_json(self.app.open_config(payload.get('launch', True)))
             if parsed.path == '/api/autostart':
                 return self._send_json(self.app.set_autostart(payload.get('enabled')))
+            if parsed.path == '/api/drafts':
+                return self._send_json(self.app.drop_draft(payload))
+            if parsed.path == '/api/drafts/clear':
+                return self._send_json(self.app.clear_drafts())
         except LookupError:
             return self._send_json({'error': {'message': 'unknown session'}}, 404)
         except PromptWizardError as exc:

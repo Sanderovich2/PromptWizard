@@ -15,6 +15,8 @@ let current = "prompt";
 let session = null;
 let outcome = null;
 let busy = false;
+let diffVisible = false;
+let batch = [];
 
 function t(key, vars) {
   let text = Object.prototype.hasOwnProperty.call(state.strings, key) ? state.strings[key] : "";
@@ -113,7 +115,7 @@ function setStep(next) {
 function stepEnabled(id) {
   if (id === "prompt" || id === "sessions") return true;
   if (id === "analysis" || id === "questions") return Boolean(session);
-  return Boolean(outcome);
+  return Boolean(outcome || batch.length);
 }
 
 function renderAnalysis(data) {
@@ -200,12 +202,42 @@ function renderQuestions(questions) {
   $("questions-empty").hidden = questions.length > 0;
 }
 
+function renderStats(data) {
+  const stats = data.stats || {};
+  const node = $("run-stats");
+  const seconds = stats.duration_ms ? (stats.duration_ms / 1000).toFixed(1) : "";
+  const tokens = Number(stats.tokens_total) || 0;
+  if (!seconds && !tokens) {
+    node.hidden = true;
+    node.textContent = "";
+    return;
+  }
+  node.textContent = t("run.stats", {
+    seconds: seconds || "0.0",
+    provider: data.provider || "-",
+    model: data.model || "-",
+    tokens: tokens,
+  });
+  node.hidden = false;
+}
+
 function renderResult(data) {
   const rewrite = data.rewrite || {};
+  batch = [];
+  $("batch-list").hidden = true;
+  $("batch-list").textContent = "";
+  $("result-head").hidden = false;
+  $("draft").hidden = false;
+  $("changes").hidden = false;
   const badge = $("mode");
   badge.textContent = t("run.mode_label", { mode: t("run.mode." + data.mode) });
   badge.className = "badge is-" + data.mode;
   $("draft").textContent = rewrite.improved_prompt || "";
+  renderStats(data);
+  const translation = $("translation");
+  const translationText = String(data.translation || "").trim();
+  $("translation-text").textContent = translationText;
+  translation.hidden = !translationText;
   const list = $("changes");
   list.textContent = "";
   (rewrite.changes || []).forEach((change) => {
@@ -213,13 +245,197 @@ function renderResult(data) {
     li.textContent = change;
     list.append(li);
   });
+  if (diffVisible) renderDiff();
+}
+
+function batchText() {
+  const blocks = batch.map((item, index) => {
+    const head = "# " + t("web.batch_item", { index: index + 1, total: batch.length });
+    const prompt = String(item.prompt || "");
+    const improved = String((item.rewrite || {}).improved_prompt || "");
+    return head + "\n\n" + prompt + "\n\n" + improved;
+  });
+  return blocks.join("\n\n---\n\n");
+}
+
+function renderBatch(results) {
+  const list = $("batch-list");
+  list.textContent = "";
+  results.forEach((item, index) => {
+    const card = document.createElement("article");
+    card.className = "batch-card";
+    const head = document.createElement("p");
+    head.className = "batch-head";
+    head.textContent =
+      t("web.batch_item", { index: index + 1, total: results.length }) +
+      " \u00b7 " +
+      t("run.score", { score: item.score });
+    const prompt = document.createElement("p");
+    prompt.className = "batch-prompt";
+    prompt.textContent = String(item.prompt || "");
+    const draft = document.createElement("pre");
+    draft.className = "draft";
+    draft.textContent = String((item.rewrite || {}).improved_prompt || "");
+    card.append(head, prompt, draft);
+    const changes = document.createElement("ol");
+    changes.className = "changes";
+    const made = (item.rewrite || {}).changes || [];
+    made.forEach((change) => {
+      const li = document.createElement("li");
+      li.textContent = change;
+      changes.append(li);
+    });
+    if (made.length) card.append(changes);
+    list.append(card);
+  });
+  list.hidden = results.length === 0;
+  $("result-head").hidden = results.length > 0;
+  $("draft").hidden = results.length > 0;
+  $("changes").hidden = results.length > 0;
+  $("translation").hidden = true;
+  $("diff-view").hidden = true;
+  diffVisible = false;
+  $("diff-toggle").textContent = t("web.diff_show");
+}
+
+function tokenize(text) {
+  return text.split(/(\s+)/).filter((part) => part.length > 0);
+}
+
+function diffTokens(left, right) {
+  const limit = 900;
+  if (left.length > limit || right.length > limit) {
+    return [
+      { kind: "removed", text: left.join("") },
+      { kind: "added", text: right.join("") },
+    ];
+  }
+  const rows = left.length + 1;
+  const cols = right.length + 1;
+  const table = [];
+  for (let i = 0; i < rows; i += 1) table.push(new Array(cols).fill(0));
+  for (let i = left.length - 1; i >= 0; i -= 1) {
+    for (let j = right.length - 1; j >= 0; j -= 1) {
+      table[i][j] =
+        left[i] === right[j]
+          ? table[i + 1][j + 1] + 1
+          : Math.max(table[i + 1][j], table[i][j + 1]);
+    }
+  }
+  const parts = [];
+  const push = (kind, text) => {
+    const last = parts[parts.length - 1];
+    if (last && last.kind === kind) last.text += text;
+    else parts.push({ kind: kind, text: text });
+  };
+  let i = 0;
+  let j = 0;
+  while (i < left.length && j < right.length) {
+    if (left[i] === right[j]) {
+      push("same", left[i]);
+      i += 1;
+      j += 1;
+    } else if (table[i + 1][j] >= table[i][j + 1]) {
+      push("removed", left[i]);
+      i += 1;
+    } else {
+      push("added", right[j]);
+      j += 1;
+    }
+  }
+  while (i < left.length) {
+    push("removed", left[i]);
+    i += 1;
+  }
+  while (j < right.length) {
+    push("added", right[j]);
+    j += 1;
+  }
+  return parts;
+}
+
+function originalText() {
+  const typed = $("prompt").value.trim();
+  if (typed) return typed;
+  return String((outcome || {}).original_prompt || "").trim();
+}
+
+function countWords(text) {
+  return text.split(/\s+/).filter((part) => part.length > 0).length;
+}
+
+function renderDiff() {
+  const before = originalText();
+  const after = String(((outcome || {}).rewrite || {}).improved_prompt || "");
+  const body = $("diff-body");
+  body.textContent = "";
+  if (!before || !after) {
+    $("diff-counts").textContent = t("web.diff_empty");
+    return;
+  }
+  let added = 0;
+  let removed = 0;
+  diffTokens(tokenize(before), tokenize(after)).forEach((part) => {
+    const node = document.createElement("span");
+    node.className = "diff-" + part.kind;
+    node.textContent = part.text;
+    if (part.kind === "added") added += countWords(part.text);
+    if (part.kind === "removed") removed += countWords(part.text);
+    body.append(node);
+  });
+  $("diff-counts").textContent =
+    t("web.diff_added", { count: added }) + " · " + t("web.diff_removed", { count: removed });
+}
+
+function toggleDiff() {
+  diffVisible = !diffVisible;
+  $("diff-view").hidden = !diffVisible;
+  $("diff-toggle").textContent = t(diffVisible ? "web.diff_hide" : "web.diff_show");
+  if (diffVisible) renderDiff();
 }
 
 async function runPrimary() {
   if (busy) return;
+  if (current === "prompt" && $("batch-mode").checked) return runBatch();
   if (current === "prompt") return analyze();
   if (current === "analysis" || current === "questions") return rewrite();
   return restart();
+}
+
+async function runBatch() {
+  const raw = $("prompt").value.trim();
+  if (!raw) {
+    notice(t("gui.error"), t("gui.no_prompt"));
+    return;
+  }
+  const prompts = raw
+    .split(/\n\s*\n|^\s*-{3,}\s*$/m)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+  if (!prompts.length) {
+    notice(t("gui.error"), t("web.batch_empty"));
+    return;
+  }
+  clearNotice();
+  setBusy(true, t("web.batch_running", { count: prompts.length }));
+  try {
+    const data = await post("/api/batch", { prompts: prompts, lang: state.lang });
+    batch = data.results || [];
+    session = null;
+    outcome = null;
+    renderBatch(batch);
+    setStep("result");
+    loadDrafts();
+    setStatus(t("web.batch_ready", { count: batch.length }));
+  } catch (error) {
+    notice(t("gui.error"), error.message);
+    setStatus(t("gui.error"));
+  } finally {
+    setBusy(false);
+    document.querySelectorAll(".step").forEach((node) => {
+      node.disabled = !stepEnabled(node.dataset.goto);
+    });
+  }
 }
 
 async function analyze() {
@@ -235,6 +451,7 @@ async function analyze() {
     session = data;
     outcome = null;
     $("restart").hidden = false;
+    loadDrafts();
     renderAnalysis(data);
     renderQuestions(data.questions || []);
     document.querySelectorAll(".step").forEach((node) => {
@@ -266,7 +483,8 @@ async function rewrite() {
     outcome = data;
     renderResult(data);
     setStep("result");
-    setStatus(t("run.saved", { path: data.saved || "" }));
+    copyResultQuietly(data);
+    setStatus(data.autosaved ? t("web.autosaved", { path: data.autosaved }) : t("run.saved", { path: data.saved || "" }));
   } catch (error) {
     notice(t("gui.error"), error.message);
     setStatus(t("gui.error"));
@@ -281,22 +499,33 @@ async function rewrite() {
 function restart() {
   session = null;
   outcome = null;
+  batch = [];
   clearNotice();
   $("prompt").value = "";
   $("issues").textContent = "";
   $("questions").textContent = "";
   $("draft").textContent = "";
   $("changes").textContent = "";
+  $("batch-list").textContent = "";
+  $("batch-list").hidden = true;
+  $("result-head").hidden = false;
+  $("draft").hidden = false;
+  $("changes").hidden = false;
   $("score").textContent = "–";
   $("summary").textContent = "";
   $("restart").hidden = true;
+  $("diff-view").hidden = true;
+  diffVisible = false;
+  $("diff-toggle").textContent = t("web.diff_show");
+  $("diff-body").textContent = "";
+  $("diff-counts").textContent = "";
   setStep("prompt");
   setStatus(t("gui.ready"));
   $("prompt").focus();
 }
 
 async function copyDraft() {
-  const text = $("draft").textContent;
+  const text = batch.length ? batchText() : $("draft").textContent;
   if (!text) return;
   try {
     await navigator.clipboard.writeText(text);
@@ -307,7 +536,7 @@ async function copyDraft() {
 }
 
 function downloadDraft() {
-  const text = $("draft").textContent;
+  const text = batch.length ? batchText() : $("draft").textContent;
   if (!text) return;
   const format = $("export-format").value || "md";
   const changes = Array.from(document.querySelectorAll("#changes li")).map((node) =>
@@ -315,7 +544,10 @@ function downloadDraft() {
   );
   let body;
   if (format === "json") {
-    body = JSON.stringify({ prompt: $("prompt").value, improved_prompt: text, changes: changes }, null, 2) + "\n";
+    const payload = batch.length
+      ? { prompts: $("prompt").value, results: batch }
+      : { prompt: $("prompt").value, improved_prompt: text, changes: changes };
+    body = JSON.stringify(payload, null, 2) + "\n";
   } else if (format === "txt") {
     body = text + (changes.length ? "\n\n" + t("gui.changes_label") + "\n" + changes.map((c) => "- " + c).join("\n") : "") + "\n";
   } else {
@@ -329,7 +561,7 @@ function downloadDraft() {
   const blob = new Blob([body], { type: (types[format] || "text/plain") + ";charset=utf-8" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = "promptwizard-" + ((outcome && outcome.id) || "draft") + "." + format;
+  link.download = "promptwizard-" + ((outcome && outcome.id) || (batch.length ? "batch" : "draft")) + "." + format;
   document.body.append(link);
   link.click();
   link.remove();
@@ -372,6 +604,7 @@ async function loadState(lang, attempt) {
   state.strings = data.strings || {};
   state.settings = data.settings || {};
   state.themes = data.themes || ["light", "dark"];
+  loadDrafts();
   const select = $("lang");
   select.textContent = "";
   state.languages.forEach((code) => {
@@ -384,6 +617,8 @@ async function loadState(lang, attempt) {
   $("prompt").placeholder = t("gui.prompt_placeholder");
   fillSettings();
   applyStrings();
+  loadDrafts();
+  if (state.settings && state.settings.check_updates) checkForUpdates();
   if (session) renderAnalysis(session);
   if (session) renderQuestions(session.questions || []);
   if (outcome) renderResult(outcome);
@@ -455,6 +690,105 @@ function wireSafe() {
   }
 }
 
+function renderDrafts(items) {
+  const box = $("draft-list");
+  box.textContent = "";
+  if (!items.length) {
+    box.hidden = true;
+    return;
+  }
+  const label = document.createElement("span");
+  label.className = "meta";
+  label.textContent = t("web.drafts");
+  box.append(label);
+  items.forEach((text) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip";
+    chip.textContent = text.length > 64 ? text.slice(0, 64) + "…" : text;
+    chip.title = text;
+    chip.addEventListener("click", () => {
+      $("prompt").value = text;
+      if (current === "prompt") $("primary").disabled = busy || !primaryIsUsable();
+      $("prompt").focus();
+    });
+    box.append(chip);
+  });
+  box.hidden = false;
+}
+
+async function loadDrafts() {
+  try {
+    const response = await fetch("/api/drafts");
+    const data = await response.json();
+    renderDrafts(data.drafts || []);
+  } catch (error) {
+    renderDrafts([]);
+  }
+}
+
+async function clearDrafts() {
+  try {
+    const data = await post("/api/drafts/clear", {});
+    renderDrafts(data.drafts || []);
+    setStatus(t("web.drafts_cleared"));
+  } catch (error) {
+    setStatus(error.message);
+  }
+}
+
+function writePromptText(text) {
+  $("prompt").value = text;
+  if (current === "prompt") $("primary").disabled = busy || !primaryIsUsable();
+  $("prompt").focus();
+}
+
+function wireDrop() {
+  const panel = $("panel-prompt");
+  const hint = $("drop-hint");
+  const stop = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+  document.addEventListener("dragover", (event) => event.preventDefault());
+  document.addEventListener("drop", (event) => event.preventDefault());
+  panel.addEventListener("dragover", (event) => {
+    stop(event);
+    panel.classList.add("is-dragging");
+    hint.hidden = false;
+  });
+  panel.addEventListener("dragleave", (event) => {
+    stop(event);
+    panel.classList.remove("is-dragging");
+    hint.hidden = true;
+  });
+  panel.addEventListener("drop", async (event) => {
+    stop(event);
+    panel.classList.remove("is-dragging");
+    hint.hidden = true;
+    const files = event.dataTransfer && event.dataTransfer.files;
+    if (!files || !files.length) return;
+    try {
+      writePromptText(await files[0].text());
+      setStatus(files[0].name);
+    } catch (error) {
+      setStatus(error.message);
+    }
+  });
+}
+
+async function copyResultQuietly(data) {
+  const settings = state.settings || {};
+  if (!settings.auto_copy || !navigator.clipboard) return;
+  const text = String(((data || {}).rewrite || {}).improved_prompt || "").trim();
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (error) {
+    setStatus(t("gui.error") + ": " + error.message);
+  }
+}
+
 function wire() {
   $("primary").addEventListener("click", runPrimary);
   $("restart").addEventListener("click", restart);
@@ -469,6 +803,9 @@ function wire() {
   });
   $("copy").addEventListener("click", copyDraft);
   $("download").addEventListener("click", downloadDraft);
+  $("diff-toggle").addEventListener("click", toggleDiff);
+  $("drafts-clear").addEventListener("click", clearDrafts);
+  wireDrop();
   $("prompt").addEventListener("input", () => {
     if (current === "prompt") $("primary").disabled = busy || !primaryIsUsable();
   });
@@ -486,10 +823,35 @@ function wire() {
   });
 }
 
+function parseClock(value) {
+  const match = /^([0-9]{1,2}):([0-9]{2})$/.exec(String(value || "").trim());
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+function isNightNow() {
+  const settings = state.settings || {};
+  const day = parseClock(settings.theme_day_start);
+  const night = parseClock(settings.theme_night_start);
+  const start = day === null ? 7 * 60 : day;
+  const end = night === null ? 19 * 60 : night;
+  const now = new Date();
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  if (start === end) return false;
+  if (start < end) return minutes < start || minutes >= end;
+  return minutes >= end && minutes < start;
+}
+
 function applyTheme(theme) {
   const chosen = state.themes.includes(theme) ? theme : "light";
   const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-  document.documentElement.dataset.theme = chosen === "auto" ? (prefersDark ? "dark" : "light") : chosen;
+  let resolved = chosen;
+  if (chosen === "auto") resolved = prefersDark ? "dark" : "light";
+  if (chosen === "schedule") resolved = isNightNow() ? "dark" : "light";
+  document.documentElement.dataset.theme = resolved;
 }
 
 function applyTypography() {
@@ -556,6 +918,14 @@ function fillSettings() {
   $("set-max-questions").value = settings.max_questions;
   $("set-temperature").value = settings.temperature;
   $("set-max-tokens").value = settings.max_tokens;
+  $("system-analyzer").value = settings.system_analyzer || "";
+  $("system-rewriter").value = settings.system_rewriter || "";
+  $("theme-day-start").value = settings.theme_day_start || "07:00";
+  $("theme-night-start").value = settings.theme_night_start || "19:00";
+  $("auto-copy").checked = Boolean(settings.auto_copy);
+  $("autosave-dir").value = settings.autosave_dir || "";
+  $("translate-prompt").checked = Boolean(settings.translate_prompt);
+  $("check-updates").checked = Boolean(settings.check_updates);
   applyTypography();
   $("config-path").textContent = settings.path || "";
   loadModels(settings.provider);
@@ -590,6 +960,14 @@ async function saveSettings() {
     max_questions: Number($("set-max-questions").value),
     temperature: Number($("set-temperature").value),
     max_tokens: Number($("set-max-tokens").value),
+    system_analyzer: $("system-analyzer").value,
+    system_rewriter: $("system-rewriter").value,
+    theme_day_start: $("theme-day-start").value || "07:00",
+    theme_night_start: $("theme-night-start").value || "19:00",
+    auto_copy: $("auto-copy").checked,
+    autosave_dir: $("autosave-dir").value.trim(),
+    translate_prompt: $("translate-prompt").checked,
+    check_updates: $("check-updates").checked,
   };
   try {
     const data = await post("/api/settings", payload);
@@ -626,6 +1004,69 @@ async function addCustomProvider() {
   }
 }
 
+function renderProviders(entries) {
+  const list = $("provider-status");
+  list.textContent = "";
+  entries.forEach((entry) => {
+    const li = document.createElement("li");
+    li.className = "provider-row " + (entry.available ? "is-ok" : "is-off");
+    const head = document.createElement("span");
+    head.className = "provider-head";
+    head.textContent =
+      entry.name + " — " + t(entry.available ? "providers.available" : "providers.unavailable");
+    const detail = document.createElement("span");
+    detail.className = "provider-detail";
+    detail.textContent = entry.detail || "";
+    li.append(head, detail);
+    if (entry.models && entry.models.length) {
+      const models = document.createElement("span");
+      models.className = "provider-models";
+      models.textContent = t("providers.models", { models: entry.models.slice(0, 8).join(", ") });
+      li.append(models);
+    }
+    list.append(li);
+  });
+}
+
+async function checkProviders() {
+  const button = $("check-providers");
+  const note = $("providers-note");
+  button.disabled = true;
+  note.textContent = "";
+  $("provider-status").textContent = "";
+  try {
+    const response = await fetch("/api/providers");
+    const data = await response.json();
+    renderProviders(data.providers || []);
+    note.textContent = t("web.providers_checked");
+  } catch (error) {
+    note.textContent = t("web.providers_failed", { reason: error.message });
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function checkForUpdates() {
+  const note = $("update-note");
+  note.textContent = "";
+  try {
+    const response = await fetch("/api/update");
+    const data = await response.json();
+    if (data.error) {
+      note.textContent = t("web.update_failed", { reason: data.error });
+      return;
+    }
+    if (data.newer) {
+      note.textContent = t("web.update_available", { version: data.latest });
+      notice(t("web.check_updates"), t("web.update_available", { version: data.latest }) + (data.url ? "\n" + data.url : ""));
+      return;
+    }
+    note.textContent = t("web.update_current", { version: data.current });
+  } catch (error) {
+    note.textContent = t("web.update_failed", { reason: error.message });
+  }
+}
+
 function wireSettings() {
   $("open-settings").addEventListener("click", () => {
     $("drawer").hidden = false;
@@ -634,6 +1075,16 @@ function wireSettings() {
     $("drawer").hidden = true;
   });
   $("theme").addEventListener("change", (event) => applyTheme(event.target.value));
+  $("theme-day-start").addEventListener("change", () => {
+    state.settings = Object.assign({}, state.settings, { theme_day_start: $("theme-day-start").value });
+    applyTheme($("theme").value);
+  });
+  $("theme-night-start").addEventListener("change", () => {
+    state.settings = Object.assign({}, state.settings, { theme_night_start: $("theme-night-start").value });
+    applyTheme($("theme").value);
+  });
+  $("check-updates").addEventListener("change", checkForUpdates);
+  $("check-providers").addEventListener("click", checkProviders);
   $("font").addEventListener("change", () => {
     state.settings = Object.assign({}, state.settings, { font: $("font").value });
     applyTypography();
@@ -687,7 +1138,7 @@ function wireSettings() {
       return;
     }
     if (event.key === "s" || event.key === "S") {
-      if ($("draft").textContent) {
+      if ($("draft").textContent || batch.length) {
         event.preventDefault();
         downloadDraft();
       }
@@ -702,4 +1153,12 @@ function wireSettings() {
 
 wireSettingsSafe();
 wireSafe();
+window.setInterval(() => {
+  const settings = state.settings || {};
+  if (settings.theme === "schedule") applyTheme("schedule");
+}, 60000);
+document.addEventListener("visibilitychange", () => {
+  const settings = state.settings || {};
+  if (!document.hidden && settings.theme === "schedule") applyTheme("schedule");
+});
 loadState("ru").then(() => setStep("prompt"), () => setStep("prompt"));

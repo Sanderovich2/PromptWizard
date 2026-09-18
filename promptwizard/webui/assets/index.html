@@ -70,10 +70,14 @@
 
     <section class="panel" id="panel-prompt">
       <div class="panel-bar">
+        <label class="check compact"><input type="checkbox" id="batch-mode"><span data-i18n="web.batch_mode"></span></label>
         <button type="button" id="load-file" class="ghost" data-i18n="web.load_file"></button>
+        <button type="button" id="drafts-clear" class="ghost" data-i18n="web.drafts_clear"></button>
         <input type="file" id="file-input" accept=".txt,.md,.markdown,.text" hidden>
       </div>
+      <div class="drafts" id="draft-list" hidden></div>
       <textarea id="prompt" spellcheck="false" autocomplete="off"></textarea>
+      <p class="hint drop-hint" id="drop-hint" hidden data-i18n="web.drop_hint"></p>
     </section>
 
     <section class="panel" id="panel-analysis" hidden>
@@ -91,7 +95,8 @@
     </section>
 
     <section class="panel" id="panel-result" hidden>
-      <div class="result-head">
+      <div class="batch" id="batch-list" hidden></div>
+      <div class="result-head" id="result-head">
         <span class="badge" id="mode"></span>
         <div class="result-actions">
           <select id="export-format" aria-label="format">
@@ -99,11 +104,21 @@
             <option value="txt">txt</option>
             <option value="json">json</option>
           </select>
+          <button type="button" id="diff-toggle" class="ghost" data-i18n="web.diff_show"></button>
           <button type="button" id="copy" class="ghost" data-i18n="gui.copy"></button>
           <button type="button" id="download" class="ghost" data-i18n="gui.download"></button>
         </div>
       </div>
       <pre class="draft" id="draft"></pre>
+      <p class="meta run-stats" id="run-stats" hidden></p>
+      <div class="diff" id="diff-view" hidden>
+        <p class="hint" id="diff-counts"></p>
+        <div class="diff-body" id="diff-body"></div>
+      </div>
+      <div class="translation" id="translation" hidden>
+        <h3 class="sub" data-i18n="web.translation_label"></h3>
+        <pre class="draft" id="translation-text"></pre>
+      </div>
       <h3 class="sub" data-i18n="gui.changes_label"></h3>
       <ol class="changes" id="changes"></ol>
     </section>
@@ -137,8 +152,14 @@
       <option value="light" data-i18n="web.theme_light"></option>
       <option value="dark" data-i18n="web.theme_dark"></option>
       <option value="auto" data-i18n="web.theme_auto"></option>
+      <option value="schedule" data-i18n="web.theme_schedule"></option>
     </select>
   </label>
+
+  <div class="pair">
+    <label class="field"><span data-i18n="web.theme_day_start"></span><input id="theme-day-start" type="time"></label>
+    <label class="field"><span data-i18n="web.theme_night_start"></span><input id="theme-night-start" type="time"></label>
+  </div>
 
   <label class="field">
     <span data-i18n="web.font"></span>
@@ -180,10 +201,25 @@
     <datalist id="model-list"></datalist>
   </label>
   <p class="hint" id="models-note"></p>
+  <button type="button" id="check-providers" class="ghost wide" data-i18n="web.check_providers"></button>
+  <ol class="providers" id="provider-status"></ol>
+  <p class="hint" id="providers-note"></p>
   <button type="button" id="settings-save" class="primary wide" data-i18n="web.save_settings"></button>
   <p class="hint" id="settings-note"></p>
 
   <hr>
+
+  <label class="check"><input type="checkbox" id="auto-copy"><span data-i18n="web.auto_copy"></span></label>
+  <label class="field"><span data-i18n="web.autosave_dir"></span><input id="autosave-dir" placeholder="D:\prompts"></label>
+  <label class="check"><input type="checkbox" id="translate-prompt"><span data-i18n="web.translate_prompt"></span></label>
+  <p class="hint" data-i18n="web.translate_hint"></p>
+  <label class="check"><input type="checkbox" id="check-updates"><span data-i18n="web.check_updates"></span></label>
+  <p class="hint" id="update-note"></p>
+
+  <h3 data-i18n="web.system_prompts"></h3>
+  <p class="hint" data-i18n="web.system_prompts_hint"></p>
+  <label class="field"><span data-i18n="web.system_analyzer_label"></span><textarea id="system-analyzer" rows="3" spellcheck="false"></textarea></label>
+  <label class="field"><span data-i18n="web.system_rewriter_label"></span><textarea id="system-rewriter" rows="3" spellcheck="false"></textarea></label>
 
   <h3 data-i18n="web.custom_provider"></h3>
   <p class="hint" data-i18n="web.custom_hint"></p>
