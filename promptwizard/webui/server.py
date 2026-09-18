@@ -29,7 +29,10 @@ CONTENT_TYPES = {
 def _asset(name: str) -> tuple[bytes, str]:
     suffix = name[name.rfind('.'):] if '.' in name else ''
     resource = resources.files('promptwizard.webui').joinpath('assets', name)
-    return resource.read_bytes(), CONTENT_TYPES.get(suffix, 'application/octet-stream')
+    data = resource.read_bytes()
+    if name == 'index.html':
+        data = data.replace(b'{{v}}', __version__.encode('ascii'))
+    return data, CONTENT_TYPES.get(suffix, 'application/octet-stream')
 
 
 def _hint(translator: Translator, exc: PromptWizardError) -> str:
