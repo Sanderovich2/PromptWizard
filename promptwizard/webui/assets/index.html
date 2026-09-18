@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PromptWizard</title>
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div class="shell">
+
+  <aside class="rail">
+    <div class="brand">
+      <span class="mark">PW</span>
+      <span class="brand-text">
+        <b data-i18n="app.name"></b>
+        <i data-i18n="app.tagline"></i>
+      </span>
+    </div>
+
+    <nav class="steps" aria-label="steps">
+      <button type="button" class="step is-current" data-goto="prompt">
+        <span class="no">1</span><span data-i18n="gui.tab_prompt"></span>
+      </button>
+      <button type="button" class="step" data-goto="analysis" disabled>
+        <span class="no">2</span><span data-i18n="gui.tab_analysis"></span>
+      </button>
+      <button type="button" class="step" data-goto="questions" disabled>
+        <span class="no">3</span><span data-i18n="gui.tab_questions"></span>
+      </button>
+      <button type="button" class="step" data-goto="result" disabled>
+        <span class="no">4</span><span data-i18n="gui.tab_result"></span>
+      </button>
+    </nav>
+
+    <div class="rail-foot">
+      <label class="select">
+        <span data-i18n="gui.language"></span>
+        <select id="lang" aria-label="language"></select>
+      </label>
+      <p class="meta"><span data-i18n="gui.provider_label"></span> <b id="provider">–</b></p>
+      <p class="meta">v<span id="version">–</span></p>
+    </div>
+  </aside>
+
+  <main class="work">
+    <header class="work-head">
+      <div class="head-text">
+        <p class="eyebrow"><span data-i18n="gui.step"></span> <span id="step-index">1</span> / 4</p>
+        <h2 id="step-title">–</h2>
+        <p class="hint" id="step-hint"></p>
+      </div>
+      <div class="work-actions">
+        <button type="button" id="restart" class="ghost" hidden data-i18n="gui.restart"></button>
+        <button type="button" id="primary" class="primary">–</button>
+      </div>
+    </header>
+
+    <section class="panel" id="panel-prompt">
+      <textarea id="prompt" spellcheck="false" autocomplete="off"></textarea>
+    </section>
+
+    <section class="panel" id="panel-analysis" hidden>
+      <div class="score">
+        <span class="score-num" id="score">–</span>
+        <p class="score-note" id="summary"></p>
+      </div>
+      <ol class="issues" id="issues"></ol>
+      <p class="empty" id="issues-empty" hidden data-i18n="run.no_issues"></p>
+    </section>
+
+    <section class="panel" id="panel-questions" hidden>
+      <ol class="questions" id="questions"></ol>
+      <p class="empty" id="questions-empty" hidden data-i18n="gui.no_questions"></p>
+    </section>
+
+    <section class="panel" id="panel-result" hidden>
+      <div class="result-head">
+        <span class="badge" id="mode"></span>
+        <div class="result-actions">
+          <button type="button" id="copy" class="ghost" data-i18n="gui.copy"></button>
+          <button type="button" id="download" class="ghost" data-i18n="gui.download"></button>
+        </div>
+      </div>
+      <pre class="draft" id="draft"></pre>
+      <h3 class="sub" data-i18n="gui.changes_label"></h3>
+      <ol class="changes" id="changes"></ol>
+    </section>
+
+    <div class="notice" id="notice" hidden>
+      <b id="notice-title"></b>
+      <span id="notice-body"></span>
+    </div>
+
+    <footer class="status" aria-live="polite">
+      <span id="status" data-i18n="gui.ready"></span>
+      <span class="run-hint" data-i18n="gui.run_hint"></span>
+    </footer>
+  </main>
+</div>
+<script src="/assets/app.js"></script>
+</body>
+</html>

@@ -90,7 +90,8 @@ cat prompt.txt | promptwizard --lang en          # from stdin
 promptwizard --no-questions "summarize this"     # skip the questions
 promptwizard --out result.md --format md "..."   # export the result
 promptwizard --json "..."                        # machine-readable output
-promptwizard gui                                 # the tkinter window
+promptwizard gui                                 # the interface (local web UI in a native window)
+promptwizard gui --tk                            # the older tkinter window
 promptwizard providers                           # what is configured and reachable
 promptwizard sessions                            # the session history
 promptwizard sessions --show 20260918-160401-1a2b3c
@@ -103,6 +104,24 @@ Without an installed console script, use `python -m promptwizard ...` or the lau
 |---|---|
 | Windows | `run.bat "your prompt"` |
 | Linux / macOS | `./run.sh "your prompt"` |
+
+## Interface
+
+`promptwizard gui` opens the interface: a local web UI shown in a native window (pywebview), or in
+the default browser when that is unavailable. It is a four-step workbench - Prompt, Analysis,
+Questions, Result - with a numbered step rail, the issues as an editorial list, the whole question
+batch with an answer field and option chips under each question, and the rewritten prompt as the
+final draft. Ctrl+Enter runs the current step.
+
+The interface talks to the same Python core over a small local HTTP API (`/api/state`,
+`/api/analyze`, `/api/rewrite`), bound to 127.0.0.1 only. For the native window install the optional
+dependency:
+
+```bash
+python -m pip install -e ".[web]"
+```
+
+Without it `gui` still works and opens the browser. `gui --tk` keeps the older tkinter window.
 
 ## Providers (free only)
 
@@ -363,18 +382,15 @@ cd C:\path\to\PromptWizard
 .\run.bat --version
 ```
 
-### 4. GUI (tkinter)
+### 4. Интерфейс
 
 ```powershell
-.\run.bat gui
+.\run.bat gui          # локальный веб-интерфейс в нативном окне (или в браузере)
+.\run.bat gui --tk     # прежнее окно на tkinter
 ```
 
-1. Сверху — переключатель языка **ru/en**, рядом текущий провайдер и оценка.
-2. Вставь промт в поле **«Исходный промт»**.
-3. **«Анализ»** → список проблем и блок вопросов с полями для ответов.
-4. Заполни ответы (можно не все).
-5. **«Переписать»** → «Улучшенный промт» и «Изменения».
-6. **«Сохранить результат»** → диалог сохранения.
+Четыре шага: Промт → Анализ → Вопросы → Результат. Слева рельс шагов, внизу строка состояния.
+`Ctrl + Enter` запускает текущий шаг. Отвечать на все вопросы не обязательно.
 
 Пока идёт запрос к модели, кнопки неактивны, в статусе «Работаю...». Если провайдер недоступен,
 окно не падает: показывает ошибку и её причину.

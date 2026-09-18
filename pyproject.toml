@@ -43,6 +43,7 @@ dependencies = []
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "pyinstaller>=6.0"]
 evals = ["pytest>=8.0"]
+web = ["pywebview>=6.0"]
 
 [project.scripts]
 promptwizard = "promptwizard.cli:main"
@@ -55,7 +56,7 @@ Issues = "https://github.com/Sanderovich2/PromptWizard/issues"
 include = ["promptwizard*"]
 
 [tool.setuptools.package-data]
-promptwizard = ["locales/*.json"]
+promptwizard = ["locales/*.json", "webui/assets/*"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"

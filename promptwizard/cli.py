@@ -85,6 +85,9 @@ def build_parser(translator: Translator, command: str='run') -> argparse.Argumen
         parser.add_argument('--no-fallback', dest='fallback', action='store_false', help=translator('arg.fallback.help'))
         parser.set_defaults(fallback=True)
         parser.add_argument('-V', '--version', action='version', version=f'%(prog)s {__version__}')
+    elif command == 'gui':
+        parser.add_argument('--tk', action='store_true', help=translator('arg.tk.help'))
+        parser.add_argument('--port', type=int, default=0, help=translator('arg.port.help'))
     elif command == 'sessions':
         parser.add_argument('--show', help=translator('arg.show.help'))
         parser.add_argument('--limit', type=int, default=20, help=translator('arg.limit.help'))
@@ -272,9 +275,12 @@ def _cmd_config(args: argparse.Namespace, config: Config, translator: Translator
     printer.out(translator('config.note'))
     return 0
 
-def _cmd_gui(config: Config, translator: Translator) -> int:
-    from promptwizard.gui import launch
-    return launch(config, translator)
+def _cmd_gui(config: Config, translator: Translator, args: argparse.Namespace) -> int:
+    if getattr(args, 'tk', False):
+        from promptwizard.gui import launch as launch_tk
+        return launch_tk(config, translator)
+    from promptwizard.webui import launch as launch_web
+    return launch_web(config, translator, port=getattr(args, 'port', 0) or 0)
 
 def main(argv: Sequence[str] | None=None) -> int:
     raw = list(sys.argv[1:]) if argv is None else [str(item) for item in argv]
@@ -300,7 +306,7 @@ def main(argv: Sequence[str] | None=None) -> int:
         if command == 'config':
             return _cmd_config(args, config, translator, printer)
         if command == 'gui':
-            return _cmd_gui(config, translator)
+            return _cmd_gui(config, translator, args)
         return _cmd_run(args, config, translator, printer)
     except GUIUnavailable as exc:
         _print_error(exc, translator)

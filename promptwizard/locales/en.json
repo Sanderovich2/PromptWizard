@@ -64,7 +64,9 @@
     "init": { "help": "Create a default config.json if it does not exist yet." },
     "quiet": { "help": "Suppress progress chatter; only print the final result." },
     "fallback": { "help": "Fall back to a deterministic template when the provider fails." },
-    "limit": { "help": "Maximum number of sessions to list." }
+    "limit": { "help": "Maximum number of sessions to list." },
+    "tk": { "help": "Use the tkinter window instead of the web interface." },
+    "port": { "help": "Port for the local web interface (0 picks a free one)." }
   },
   "run": {
     "title": "PromptWizard",
@@ -182,6 +184,16 @@
   "gui": {
     "title": "PromptWizard",
     "prompt_label": "Original prompt",
+    "prompt_placeholder": "Paste the prompt you want to improve...",
+    "step": "Step",
+    "run_hint": "Ctrl + Enter",
+    "analysis_hint": "What is weak in the prompt, and how to fix it",
+    "questions_hint": "Answer what you can; empty answers are fine",
+    "result_hint": "Your prompt, rewritten",
+    "analysis_ready": "Analysis ready.",
+    "download": "Download",
+    "restart": "Start over",
+    "warning": "Warning",
     "prompt_hint": "Type or paste the prompt, then press Analyze. The questions and the rewrite come next.",
     "tab_prompt": "Prompt",
     "tab_analysis": "Analysis",
