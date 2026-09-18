@@ -56,6 +56,10 @@ def _pump(root, seconds, stop_when):
     return False
 
 
+def _enabled(button) -> bool:
+    return bool(button.instate(["!disabled"]))
+
+
 def test_gui_completes_the_whole_flow(tmp_path):
     root, window, dialogs, original = _open_window(tmp_path)
     try:
@@ -67,6 +71,8 @@ def test_gui_completes_the_whole_flow(tmp_path):
         assert dialogs == []
         assert window.session.analysis is not None
         assert window.answer_entries, "the question batch was not rendered"
+        assert _enabled(window.buttons["rewrite"])
+        assert window.questions_canvas.cget("scrollregion"), "the question list is not scrollable"
 
         for entry in window.answer_entries:
             entry.insert(0, "a short paragraph")
@@ -77,8 +83,33 @@ def test_gui_completes_the_whole_flow(tmp_path):
         )
         assert dialogs == []
         assert window.result.rewrite is not None
-        assert window.result_text.get("1.0", "end").strip()
+        assert window.result_text.get("1.0", "end").strip(), "the improved prompt is not shown"
         assert window.changes_text.get("1.0", "end").strip()
+        assert window.notebook.index("current") == window.TAB_RESULT
+        assert _enabled(window.buttons["copy"])
+        assert _enabled(window.buttons["save"])
+    finally:
+        _close(root, original)
+
+
+def test_gui_still_rewrites_when_the_model_asks_nothing(tmp_path, monkeypatch):
+    root, window, dialogs, original = _open_window(tmp_path)
+    try:
+        from promptwizard.pipeline import Session
+
+        monkeypatch.setattr(Session, "make_questions", lambda self, **kwargs: ())
+
+        window.prompt_text.insert("1.0", "Write something about cats")
+        window._on_analyze()
+        assert _pump(root, 30, lambda: window.session is not None), f"no analysis: {dialogs}"
+        assert window.answer_entries == []
+        assert _enabled(window.buttons["rewrite"]), (
+            "with no questions the rewrite must still be reachable, otherwise the improved "
+            "prompt can never be produced"
+        )
+        window._on_rewrite()
+        assert _pump(root, 30, lambda: window.result is not None), f"no rewrite: {dialogs}"
+        assert window.result_text.get("1.0", "end").strip()
     finally:
         _close(root, original)
 
@@ -89,5 +120,13 @@ def test_gui_asks_for_a_prompt_when_the_field_is_empty(tmp_path):
         window._on_analyze()
         assert dialogs, "an empty prompt must tell the user what is missing"
         assert window.session is None
+    finally:
+        _close(root, original)
+
+
+def test_gui_has_four_tabs(tmp_path):
+    root, window, dialogs, original = _open_window(tmp_path)
+    try:
+        assert window.notebook.index("end") == 4
     finally:
         _close(root, original)
