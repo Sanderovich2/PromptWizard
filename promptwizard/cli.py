@@ -243,11 +243,11 @@ def _cmd_providers(config: Config, translator: Translator, printer: Printer) -> 
         state = status_state(status)
         printer.out(translator('providers.row', name=status.name, status=translator(f'providers.state.{state}'), detail='').rstrip())
         current = config.provider_settings(status.name).model
-        if current:
+        if current and state != 'no_key':
             line = translator('providers.current', model=current)
             models = list(status.models)
             if models and current not in models:
-                line = f"{line}. {translator('providers.model_missing')}"
+                line = f"{line}, {translator('providers.model_missing')}"
             printer.out('    ' + line)
         if state in ('unreachable', 'error', 'no_url') and status.detail:
             printer.out('    ' + status.detail)

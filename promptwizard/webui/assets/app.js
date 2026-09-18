@@ -1016,7 +1016,9 @@ function providerState(entry) {
 
 function providerMeta(entry) {
   const lines = [];
-  if (entry.current) lines.push(t("providers.current", { model: entry.current }));
+  if (entry.current && providerState(entry) !== "no_key") {
+    lines.push(t("providers.current", { model: entry.current }));
+  }
   if (entry.models && entry.models.length) {
     lines.push(t("providers.models", { models: entry.models.slice(0, 8).join(", ") }));
   }

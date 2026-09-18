@@ -66,6 +66,20 @@ def test_providers_command(tmp_path, capsys, monkeypatch):
     out = capsys.readouterr().out
     assert 'Providers' in out
     assert 'pollinations' in out
+    assert 'available' in out
+    assert 'Model: openai' in out
+    assert 'llama-3.3-70b-versatile' not in out
+    assert 'no API key found' not in out
+
+def test_providers_command_shows_the_reason_only_when_it_diagnoses(tmp_path, capsys, monkeypatch):
+    import promptwizard.cli as cli
+    from promptwizard.llm.base import ProviderStatus
+    monkeypatch.setattr(cli, 'describe_providers', lambda config: (ProviderStatus(name='ollama', available=False, detail='ollama: cannot reach the provider ([WinError 10061])'),))
+    assert main(['providers', '--lang', 'en', '--home', str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert 'not reachable' in out
+    assert 'cannot reach the provider' in out
+    assert 'no API key' not in out
 
 def test_config_init_creates_the_file(tmp_path, capsys):
     assert main(['config', '--init', '--lang', 'en', '--home', str(tmp_path)]) == 0
