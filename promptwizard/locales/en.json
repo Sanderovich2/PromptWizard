@@ -1,0 +1,240 @@
+{
+  "app": {
+    "name": "PromptWizard",
+    "tagline": "Analyze a prompt, ask what is missing, and rewrite it better."
+  },
+  "language": {
+    "ru": "Russian",
+    "en": "English",
+    "unknown": "the same language as the original prompt"
+  },
+  "category": {
+    "clarity": "Clarity",
+    "structure": "Structure",
+    "ambiguity": "Ambiguity",
+    "missing_detail": "Missing detail",
+    "weak_phrasing": "Weak phrasing",
+    "constraints": "Constraints",
+    "format": "Output format",
+    "audience": "Audience",
+    "examples": "Examples",
+    "scope": "Scope",
+    "tone": "Tone",
+    "context": "Context"
+  },
+  "severity": {
+    "high": "high",
+    "medium": "medium",
+    "low": "low"
+  },
+  "cli": {
+    "description": "Analyze a prompt, ask the missing questions in one batch, and rewrite it better.",
+    "epilog": "Examples:\n  promptwizard \"summarize this report\"\n  promptwizard --provider groq --lang en < prompt.txt\n  promptwizard gui\n  promptwizard providers",
+    "error_prefix": "Error:",
+    "hint_prefix": "Hint:",
+    "interrupt": "Cancelled."
+  },
+  "cmd": {
+    "run": { "help": "Analyze and rewrite a prompt (default command)." },
+    "gui": { "help": "Open the optional tkinter window." },
+    "providers": { "help": "Show configured providers and whether they are reachable." },
+    "sessions": { "help": "List saved sessions or show one of them." },
+    "config": { "help": "Show or create the configuration file." },
+    "version": { "help": "Print the version and exit." }
+  },
+  "arg": {
+    "prompt": { "help": "The prompt to improve. If omitted, read from --file, stdin, or ask interactively." },
+    "file": { "help": "Read the original prompt from this file." },
+    "lang": { "help": "UI language: ru or en." },
+    "provider": { "help": "Provider to use: ollama, gemini, groq, openrouter, openai_compatible, offline." },
+    "model": { "help": "Override the model id for the selected provider." },
+    "base_url": { "help": "Override the provider base URL (for self-hosted or new free tiers)." },
+    "temperature": { "help": "Sampling temperature (0-2)." },
+    "max_tokens": { "help": "Maximum number of tokens to generate." },
+    "timeout": { "help": "Per-request timeout in seconds." },
+    "max_questions": { "help": "Maximum number of clarifying questions to ask (0 disables them)." },
+    "out": { "help": "Write the result to this file." },
+    "format": { "help": "Export format when using --out: md, txt or json." },
+    "no_questions": { "help": "Skip the clarifying questions and rewrite right away." },
+    "no_save": { "help": "Do not save this run to the session history." },
+    "json": { "help": "Print the result as JSON instead of formatted text." },
+    "home": { "help": "PromptWizard home directory (default: ~/.promptwizard)." },
+    "config": { "help": "Explicit path to config.json." },
+    "show": { "help": "Show the full record of one saved session by id." },
+    "init": { "help": "Create a default config.json if it does not exist yet." },
+    "quiet": { "help": "Suppress progress chatter; only print the final result." },
+    "fallback": { "help": "Fall back to a deterministic template when the provider fails." },
+    "limit": { "help": "Maximum number of sessions to list." }
+  },
+  "run": {
+    "title": "PromptWizard",
+    "prompt_enter": "Paste your prompt. Finish with an empty line:",
+    "from_file": "Prompt read from {path}",
+    "empty_prompt": "No prompt given.",
+    "analyzing": "Analyzing the prompt with {provider}...",
+    "analyzed": "Analysis finished.",
+    "score": "Clarity score: {score}/100",
+    "issues_header": "Issues and weak spots",
+    "issue_item": "{index}. [{severity}] {category}: {title}",
+    "issue_detail": "   {detail}",
+    "no_issues": "No significant issues found.",
+    "questions_header": "Clarifying questions",
+    "question_item": "{index}. {text}",
+    "question_why": "   Why: {why}",
+    "question_options": "   Options: {options}",
+    "answers_batch_hint": "Answer with one line per question (empty line = skip):",
+    "answers_empty": "No answers provided.",
+    "rewriting": "Rewriting the prompt...",
+    "original_header": "Original prompt",
+    "improved_header": "Improved prompt",
+    "changes_header": "What changed and why",
+    "change_item": "- {change}",
+    "mode_label": "Mode: {mode}",
+    "mode": {
+      "llm": "LLM",
+      "template": "deterministic template",
+      "offline": "offline (no LLM)"
+    },
+    "template_warning": "The provider was unavailable; a deterministic template was used instead. Reason: {reason}",
+    "saved": "Session saved: {path}",
+    "exported": "Result written to {path}",
+    "done": "Done.",
+    "summary": "Provider: {provider} | model: {model} | prompt language: {language}"
+  },
+  "analysis": {
+    "summary_ok": "The prompt is already well specified.",
+    "summary_issues": "{count} weakness(es) found."
+  },
+  "scaffold": {
+    "role": "Role",
+    "task": "Task",
+    "context": "Context",
+    "audience": "Audience",
+    "constraints": "Constraints",
+    "format": "Output format",
+    "examples": "Examples",
+    "tone": "Tone",
+    "answers": "Clarifications",
+    "none": "(not specified)"
+  },
+  "change": {
+    "clarity": "Made the wording explicit where it was vague.",
+    "structure": "Split the wall of text into labelled sections.",
+    "ambiguity": "Replaced vague wording with concrete requirements.",
+    "missing_detail": "Added the detail that was missing.",
+    "weak_phrasing": "Rewrote the weak instructions as direct orders.",
+    "constraints": "Added explicit constraints.",
+    "format": "Specified the expected output format.",
+    "audience": "Stated who the answer is for.",
+    "examples": "Added a place for an example of the expected answer.",
+    "scope": "Bounded the scope of the task.",
+    "tone": "Set the tone of the answer.",
+    "context": "Added the background the model was missing.",
+    "answers": "Folded your answers into the prompt.",
+    "none": "No significant changes were needed."
+  },
+  "question": {
+    "format": { "text": "In what form should the answer come?", "why": "The output format is not specified, so the model has to guess it.", "options": "short summary | bullet list | table | code | free text" },
+    "audience": { "text": "Who will read the answer?", "why": "The audience decides vocabulary and level of detail.", "options": "colleague | client | beginner | expert" },
+    "length": { "text": "How long should the answer be?", "why": "Without a length limit the model writes either too much or too little.", "options": "one paragraph | a few paragraphs | one page | as short as possible" },
+    "constraints": { "text": "What must the answer avoid or respect?", "why": "Explicit constraints keep the answer inside the intended boundaries.", "options": "no jargon | facts only | no examples | must cite sources" },
+    "examples": { "text": "Can you give one example of the answer you expect?", "why": "An example pins down the style far better than an adjective.", "options": "" },
+    "context": { "text": "What is the background: who is it for, and what happens with the result?", "why": "Context removes assumptions the model would otherwise invent.", "options": "" },
+    "tone": { "text": "What tone should the answer use?", "why": "Tone is rarely specified, and the model then picks a neutral default.", "options": "formal | neutral | friendly | technical" }
+  },
+  "issue": {
+    "clarity": { "title": "The goal is not stated in one sentence", "detail": "State the outcome you want first; the rest of the instructions can hang off it." },
+    "structure": { "title": "The prompt is one undifferentiated block", "detail": "Split it into short labelled parts (task, context, constraints, format); a model reads sections more reliably than a wall of text." },
+    "ambiguity": { "title": "Vague wording leaves room for several readings", "detail": "Replace words like something, some or etc with the concrete thing you mean." },
+    "missing_detail": { "title": "Too little information to act on", "detail": "Add the specifics: what exactly, for whom, over what material, with what limits." },
+    "weak_phrasing": { "title": "Instructions are phrased as wishes, not as tasks", "detail": "Turn maybe-you-could into a direct instruction; imperative phrasing is followed more reliably." },
+    "constraints": { "title": "No constraints or limits are given", "detail": "Say what must be avoided, the maximum length, and any hard rule." },
+    "format": { "title": "The expected output format is not specified", "detail": "Say whether you want prose, bullets, a table, JSON or code, and roughly how long." },
+    "audience": { "title": "The audience is not specified", "detail": "Name who reads the answer; it fixes vocabulary and the level of detail." },
+    "examples": { "title": "No example of a good answer", "detail": "One short example removes more ambiguity than a paragraph of adjectives." },
+    "scope": { "title": "The scope of the task is unclear", "detail": "State where the task starts and stops, and what is explicitly out of scope." },
+    "tone": { "title": "The tone of the answer is unspecified", "detail": "Say whether the answer should be formal, neutral or friendly." },
+    "context": { "title": "The background is missing", "detail": "Explain why you need the answer and what will be done with it." }
+  },
+  "providers": {
+    "header": "Providers",
+    "row": "{name:-12} {status}  {detail}",
+    "available": "available",
+    "unavailable": "unavailable",
+    "models": "Models: {models}",
+    "no_key": "no API key",
+    "hint": "Set an API key with an environment variable (see README) or use --provider offline to run without an LLM."
+  },
+  "sessions": {
+    "header": "Saved sessions",
+    "empty": "No sessions saved yet.",
+    "row": "{id}  {finished_at}  {provider}/{model}  {language}",
+    "show_header": "Session {id}",
+    "not_found": "No session with id {id}.",
+    "saved_count": "{count} session(s)."
+  },
+  "config": {
+    "header": "Effective configuration",
+    "path": "Config file: {path}",
+    "written": "Wrote {path}",
+    "note": "API keys are redacted; set them via environment variables or .env."
+  },
+  "gui": {
+    "title": "PromptWizard",
+    "prompt_label": "Original prompt",
+    "analyze": "Analyze",
+    "rewrite": "Rewrite",
+    "issues_label": "Issues",
+    "questions_label": "Clarifying questions and your answers",
+    "answers_label": "Answers",
+    "original_label": "Original",
+    "result_label": "Improved prompt",
+    "changes_label": "Changes",
+    "save": "Save result",
+    "save_dialog": "Save the improved prompt",
+    "language": "Language",
+    "provider_label": "Provider",
+    "score_label": "Score",
+    "busy": "Working...",
+    "ready": "Ready.",
+    "error": "Error",
+    "saved": "Saved to {path}",
+    "no_prompt": "Enter a prompt first."
+  },
+  "error": {
+    "config": {
+      "range": "A configuration value is out of range. Check temperature (0-2), timeout (>0), max_tokens (>0) and max_questions (0-20).",
+      "read": "The configuration file could not be read. Check that the path exists and is readable.",
+      "write": "The configuration file could not be written. Check the directory permissions.",
+      "invalid": "The configuration file is not valid JSON with an object at the top level."
+    },
+    "provider": {
+      "unreachable": "The provider {provider} could not be reached ({reason}). Check your network, or start the local server (for example: ollama serve).",
+      "timeout": "The provider {provider} did not answer within {timeout}s. Raise --timeout or try a smaller model.",
+      "auth": "The provider {provider} rejected the credentials. Check that {env_var} is a valid API key.",
+      "rate_limit": "The provider {provider} reported a rate limit or an exhausted quota. Wait a moment, or switch provider with --provider.",
+      "server": "The provider {provider} returned a server error. This is usually temporary; retry in a moment.",
+      "bad_request": "The provider {provider} rejected the request. It often means the model id is wrong; check it in the provider dashboard.",
+      "model_not_found": "The model or endpoint was not found for {provider}. Check the model id, or run: promptwizard providers.",
+      "bad_response": "The provider {provider} returned a response this client could not parse.",
+      "http": "The provider {provider} returned an unexpected status ({status}).",
+      "ollama_pull": "The model {model} is not available locally. Run: ollama pull {model}",
+      "no_model": "No model is configured for {provider}. Set one with --model or in config.json.",
+      "no_base_url": "No base_url is configured for {provider}. Set one with --base-url or in config.json.",
+      "missing_key": "No API key found for {provider}. Set the {env_var} environment variable, or put it in a .env file."
+    },
+    "input": {
+      "empty": "The prompt is empty.",
+      "file": "The prompt file {path} could not be read."
+    },
+    "storage": {
+      "read": "The session history could not be read.",
+      "write": "The session history could not be written. Check the permissions of the PromptWizard home directory."
+    },
+    "gui": {
+      "unavailable": "The tkinter GUI is not available in this Python build. Use the command line instead.",
+      "tcl": "The GUI could not start because the display or Tk is unavailable."
+    },
+    "internal": "Something went wrong that was not expected."
+  }
+}

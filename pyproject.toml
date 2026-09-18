@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "promptwizard"
+version = "0.1.0"
+description = "Analyze a prompt, ask the missing questions in one batch, and rewrite it into a clearer, better-specified version (RU/EN, CLI + optional tkinter GUI, free LLM providers)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "PromptWizard contributors" }]
+keywords = [
+    "prompt-engineering",
+    "prompt-optimization",
+    "llm",
+    "cli",
+    "tkinter",
+    "ollama",
+    "gemini",
+    "groq",
+    "openrouter",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Environment :: X11 Applications :: Tk",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Text Processing :: Linguistic",
+]
+# No mandatory runtime dependencies on purpose: the whole core runs on the
+# standard library (urllib for HTTP, argparse for the CLI, tkinter for the GUI).
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pyinstaller>=6.0"]
+evals = ["pytest>=8.0"]
+
+[project.scripts]
+promptwizard = "promptwizard.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Sanderovich2/PromptWizard"
+Issues = "https://github.com/Sanderovich2/PromptWizard/issues"
+
+[tool.setuptools.packages.find]
+include = ["promptwizard*"]
+
+[tool.setuptools.package-data]
+promptwizard = ["locales/*.json"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests", "evals"]
+addopts = "-q --strict-markers --durations=5"
+markers = [
+    "eval: quality eval that talks to a real LLM provider (skipped unless available)",
+]
+filterwarnings = ["error::DeprecationWarning"]

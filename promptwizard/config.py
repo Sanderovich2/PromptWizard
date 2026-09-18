@@ -1,0 +1,414 @@
+"""Configuration: defaults, ``~/.promptwizard/config.json``, ``.env`` and env vars.
+
+Precedence, lowest to highest::
+
+    built-in defaults  <  config.json  <  .env file  <  environment  <  CLI flags
+
+API keys are never hardcoded.  Resolution order for a key is
+``<PROVIDER>_API_KEY`` environment variable (including values loaded from an
+``.env`` file) and only then the ``api_key`` field of the provider block in
+``config.json``.  Storing a key in the config file works but is discouraged:
+the file lives in the user profile, not in a repository, and
+:func:`promptwizard.cli` never prints key material.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Mapping
+
+from promptwizard.errors import ConfigError
+from promptwizard.i18n import DEFAULT_LANGUAGE, normalize_language
+
+__all__ = [
+    "CONFIG_FILENAME",
+    "DEFAULT_HOME",
+    "HOME_ENV_VAR",
+    "PROVIDER_DEFAULTS",
+    "PROVIDER_NAMES",
+    "Config",
+    "ProviderSettings",
+    "load_dotenv",
+    "resolve_home",
+]
+
+HOME_ENV_VAR = "PROMPTWIZARD_HOME"
+CONFIG_FILENAME = "config.json"
+DEFAULT_HOME = Path.home() / ".promptwizard"
+
+#: Free-tier defaults.  Model names on the hosted free tiers change often; this
+#: table is the single place to edit them (or override per user in config.json /
+#: ``--model``).  See README "Providers" for how to list what your account has.
+PROVIDER_DEFAULTS: dict[str, dict[str, str]] = {
+    "ollama": {
+        "base_url": "http://localhost:11434",
+        "model": "llama3.2",
+        "api_key_env": "",
+        "kind": "ollama",
+    },
+    "gemini": {
+        "base_url": "https://generativelanguage.googleapis.com",
+        "model": "gemini-2.5-flash",
+        "api_key_env": "GEMINI_API_KEY",
+        "kind": "gemini",
+    },
+    "groq": {
+        "base_url": "https://api.groq.com/openai/v1",
+        "model": "llama-3.3-70b-versatile",
+        "api_key_env": "GROQ_API_KEY",
+        "kind": "openai_compatible",
+    },
+    "openrouter": {
+        "base_url": "https://openrouter.ai/api/v1",
+        "model": "meta-llama/llama-3.3-70b-instruct:free",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "kind": "openai_compatible",
+    },
+    "openai_compatible": {
+        "base_url": "",
+        "model": "",
+        "api_key_env": "OPENAI_API_KEY",
+        "kind": "openai_compatible",
+    },
+    "offline": {
+        "base_url": "",
+        "model": "deterministic-stub",
+        "api_key_env": "",
+        "kind": "offline",
+    },
+}
+
+PROVIDER_NAMES: tuple[str, ...] = tuple(PROVIDER_DEFAULTS)
+
+_DOTENV_SEARCH = (Path(".env"), Path.home() / ".promptwizard" / ".env")
+
+
+def resolve_home(home: str | os.PathLike[str] | None = None) -> Path:
+    """Resolve the PromptWizard home directory.
+
+    Order: explicit argument, ``PROMPTWIZARD_HOME``, ``~/.promptwizard``.
+    The directory is *not* created here; :meth:`Config.save` and the session
+    store create it on demand so that read-only commands never touch the disk.
+    """
+    if home is not None:
+        return Path(home).expanduser()
+    env_home = os.environ.get(HOME_ENV_VAR)
+    if env_home:
+        return Path(env_home).expanduser()
+    return DEFAULT_HOME
+
+
+def load_dotenv(paths: tuple[Path, ...] | list[Path] | None = None, *, override: bool = False) -> list[Path]:
+    """Load ``KEY=VALUE`` pairs from ``.env`` files into ``os.environ``.
+
+    Deliberately tiny and dependency-free: supports ``#`` comments, blank lines,
+    an optional ``export`` prefix, single/double quotes and nothing else.  Real
+    environment variables win unless ``override=True``.
+
+    Returns the list of files that were actually read.
+    """
+    loaded: list[Path] = []
+    for path in paths if paths is not None else _DOTENV_SEARCH:
+        candidate = Path(path)
+        try:
+            raw = candidate.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        loaded.append(candidate)
+        for line in raw.splitlines():
+            entry = line.strip()
+            if not entry or entry.startswith("#") or "=" not in entry:
+                continue
+            if entry.startswith("export "):
+                entry = entry[len("export ") :].lstrip()
+            key, _, value = entry.partition("=")
+            key = key.strip()
+            value = value.strip()
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+                value = value[1:-1]
+            if not key or (key in os.environ and not override):
+                continue
+            os.environ[key] = value
+    return loaded
+
+
+@dataclass
+class ProviderSettings:
+    """Per-provider settings merged from defaults, config file and CLI flags."""
+
+    name: str
+    base_url: str = ""
+    model: str = ""
+    api_key_env: str = ""
+    api_key: str = ""
+    kind: str = "openai_compatible"
+    extra: dict[str, str] = field(default_factory=dict)
+
+    def to_dict(self, *, redact: bool = True) -> dict[str, Any]:
+        data: dict[str, Any] = {"kind": self.kind}
+        if self.base_url:
+            data["base_url"] = self.base_url
+        if self.model:
+            data["model"] = self.model
+        if self.api_key_env:
+            data["api_key_env"] = self.api_key_env
+        if self.api_key:
+            data["api_key"] = "***" if redact else self.api_key
+        data.update(self.extra)
+        return data
+
+
+@dataclass
+class Config:
+    """Effective configuration for one process run."""
+
+    home: Path = DEFAULT_HOME
+    lang: str = DEFAULT_LANGUAGE
+    provider: str = "ollama"
+    model: str = ""
+    temperature: float = 0.3
+    max_tokens: int = 1200
+    timeout: float = 60.0
+    max_questions: int = 6
+    providers: dict[str, ProviderSettings] = field(default_factory=dict)
+    source: Path | None = None
+
+    # ------------------------------------------------------------------ paths
+    @property
+    def config_path(self) -> Path:
+        """Path of the config file this instance was (or would be) loaded from."""
+        return self.source or (self.home / CONFIG_FILENAME)
+
+    @property
+    def sessions_dir(self) -> Path:
+        return self.home / "sessions"
+
+    # --------------------------------------------------------------- loading
+    @classmethod
+    def load(
+        cls,
+        path: str | os.PathLike[str] | None = None,
+        *,
+        home: str | os.PathLike[str] | None = None,
+        overrides: Mapping[str, Any] | None = None,
+        dotenv: bool = True,
+    ) -> "Config":
+        """Build a :class:`Config` from defaults + files + env + explicit overrides.
+
+        Args:
+            path: explicit config file. Defaults to ``<home>/config.json``.
+            home: PromptWizard home directory (see :func:`resolve_home`).
+            overrides: CLI flags; keys with ``None`` values are ignored.
+            dotenv: load ``./.env`` and ``<home>/.env`` before reading env vars.
+        """
+        if dotenv:
+            load_dotenv()
+        resolved_home = resolve_home(home)
+        config_path = Path(path).expanduser() if path is not None else resolved_home / CONFIG_FILENAME
+
+        raw: dict[str, Any] = {}
+        if config_path.exists():
+            raw = _read_json_object(config_path)
+
+        config = cls(home=resolved_home, source=config_path if config_path.exists() else None)
+        config.lang = normalize_language(_pick(raw, "lang", os.environ.get("PROMPTWIZARD_LANG"), config.lang))
+        config.provider = str(_pick(raw, "provider", os.environ.get("PROMPTWIZARD_PROVIDER"), config.provider))
+        config.model = str(_pick(raw, "model", os.environ.get("PROMPTWIZARD_MODEL"), config.model) or "")
+        config.temperature = _as_float(
+            _pick(raw, "temperature", os.environ.get("PROMPTWIZARD_TEMPERATURE"), config.temperature), "temperature"
+        )
+        config.max_tokens = _as_int(
+            _pick(raw, "max_tokens", os.environ.get("PROMPTWIZARD_MAX_TOKENS"), config.max_tokens), "max_tokens"
+        )
+        config.timeout = _as_float(
+            _pick(raw, "timeout", os.environ.get("PROMPTWIZARD_TIMEOUT"), config.timeout), "timeout"
+        )
+        config.max_questions = _as_int(
+            _pick(raw, "max_questions", os.environ.get("PROMPTWIZARD_MAX_QUESTIONS"), config.max_questions),
+            "max_questions",
+        )
+
+        config.providers = _build_providers(raw.get("providers"))
+
+        if overrides:
+            for key, value in overrides.items():
+                if value is None:
+                    continue
+                if key == "providers":  # merged separately by the CLI
+                    continue
+                if key == "provider_kind":
+                    continue
+                if not hasattr(config, key):
+                    raise ConfigError(f"unknown configuration override: {key!r}")
+                setattr(config, key, value)
+        config.lang = normalize_language(config.lang)
+        config.validate()
+        return config
+
+    def validate(self) -> None:
+        """Raise :class:`ConfigError` on out-of-range values."""
+        if not 0.0 <= float(self.temperature) <= 2.0:
+            raise ConfigError(
+                f"temperature must be between 0 and 2, got {self.temperature}",
+                hint_key="error.config.range",
+            )
+        if float(self.timeout) <= 0:
+            raise ConfigError(f"timeout must be > 0, got {self.timeout}", hint_key="error.config.range")
+        if int(self.max_tokens) <= 0:
+            raise ConfigError(f"max_tokens must be > 0, got {self.max_tokens}", hint_key="error.config.range")
+        if not 0 <= int(self.max_questions) <= 20:
+            raise ConfigError(
+                f"max_questions must be between 0 and 20, got {self.max_questions}",
+                hint_key="error.config.range",
+            )
+        if not str(self.provider).strip():
+            raise ConfigError("provider must not be empty", hint_key="error.config.range")
+
+    # -------------------------------------------------------------- providers
+    def provider_settings(self, name: str | None = None) -> ProviderSettings:
+        """Settings for ``name`` (defaults to the configured provider).
+
+        Unknown provider names are allowed as long as a ``providers`` block
+        defines them with a ``base_url``: that is how a new OpenAI-compatible
+        free tier is added through config alone, without touching the code.
+        """
+        target = (name or self.provider).strip()
+        if target in self.providers:
+            return self.providers[target]
+        default_kind = "openai_compatible"
+        return ProviderSettings(name=target, kind=default_kind)
+
+    def resolve_api_key(self, name: str | None = None) -> str | None:
+        """Return the API key for ``name``: env var first, then config file."""
+        settings = self.provider_settings(name)
+        if settings.api_key_env:
+            value = os.environ.get(settings.api_key_env)
+            if value:
+                return value.strip()
+        if settings.api_key:
+            return settings.api_key.strip()
+        return None
+
+    def set_provider_override(
+        self,
+        *,
+        provider: str | None = None,
+        model: str | None = None,
+        base_url: str | None = None,
+    ) -> None:
+        """Apply CLI ``--provider/--model/--base-url`` flags to this config."""
+        if provider:
+            self.provider = provider
+        target = self.provider
+        if target not in self.providers:
+            self.providers[target] = ProviderSettings(name=target)
+        if model:
+            self.providers[target].model = model
+        if base_url:
+            self.providers[target].base_url = base_url
+        if model:
+            self.model = model
+
+    # ------------------------------------------------------------ read/write
+    def to_dict(self, *, redact: bool = True) -> dict[str, Any]:
+        """Serializable view of the effective config (keys redacted by default)."""
+        return {
+            "lang": self.lang,
+            "provider": self.provider,
+            "model": self.model,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+            "timeout": self.timeout,
+            "max_questions": self.max_questions,
+            "providers": {name: settings.to_dict(redact=redact) for name, settings in sorted(self.providers.items())},
+        }
+
+    def save(self, path: str | os.PathLike[str] | None = None) -> Path:
+        """Write the config to ``path`` (default :attr:`config_path`) and return it."""
+        target = Path(path).expanduser() if path is not None else self.config_path
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(json.dumps(self.to_dict(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        except OSError as exc:
+            raise ConfigError(f"cannot write config to {target}: {exc}", hint_key="error.config.write") from exc
+        self.source = target
+        return target
+
+
+def _pick(raw: Mapping[str, Any], key: str, env_value: str | None, fallback: Any) -> Any:
+    """env > config file > fallback, skipping empty strings."""
+    if env_value not in (None, ""):
+        return env_value
+    value = raw.get(key)
+    if value not in (None, ""):
+        return value
+    return fallback
+
+
+def _as_float(value: Any, key: str) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError) as exc:
+        raise ConfigError(f"{key} must be a number, got {value!r}", hint_key="error.config.range") from exc
+
+
+def _as_int(value: Any, key: str) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise ConfigError(f"{key} must be an integer, got {value!r}", hint_key="error.config.range") from exc
+
+
+def _build_providers(raw: Any) -> dict[str, ProviderSettings]:
+    providers: dict[str, ProviderSettings] = {}
+    if raw is None:
+        raw = {}
+    if not isinstance(raw, Mapping):
+        raise ConfigError("'providers' must be an object", hint_key="error.config.invalid")
+    for name, defaults in PROVIDER_DEFAULTS.items():
+        providers[name] = ProviderSettings(
+            name=name,
+            base_url=defaults.get("base_url", ""),
+            model=defaults.get("model", ""),
+            api_key_env=defaults.get("api_key_env", ""),
+            kind=defaults.get("kind", "openai_compatible"),
+        )
+    # OLLAMA_HOST is the variable the Ollama tooling itself uses.
+    if os.environ.get("OLLAMA_HOST"):
+        providers["ollama"].base_url = os.environ["OLLAMA_HOST"].strip()
+    known_keys = {"base_url", "model", "api_key_env", "api_key", "kind"}
+    for name, block in raw.items():
+        if not isinstance(block, Mapping):
+            raise ConfigError(f"provider {name!r} must be an object", hint_key="error.config.invalid")
+        settings = providers.get(name) or ProviderSettings(name=str(name))
+        for key, value in block.items():
+            if key == "extra" and isinstance(value, Mapping):
+                settings.extra.update({str(k): str(v) for k, v in value.items()})
+            elif key in known_keys:
+                setattr(settings, key, "" if value is None else str(value))
+            else:
+                settings.extra[str(key)] = str(value)
+        if not settings.kind:
+            settings.kind = "openai_compatible"
+        providers[str(name)] = settings
+    return providers
+
+
+def _read_json_object(path: Path) -> dict[str, Any]:
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ConfigError(f"cannot read {path}: {exc}", hint_key="error.config.read") from exc
+    try:
+        data = json.loads(raw or "{}")
+    except json.JSONDecodeError as exc:
+        raise ConfigError(
+            f"{path} is not valid JSON: {exc.msg} (line {exc.lineno}, column {exc.colno})",
+            hint_key="error.config.invalid",
+        ) from exc
+    if not isinstance(data, dict):
+        raise ConfigError(f"{path} must contain a JSON object", hint_key="error.config.invalid")
+    return data
