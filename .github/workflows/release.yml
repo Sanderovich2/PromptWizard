@@ -80,7 +80,7 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           wix build installer/promptwizard.wxs \
             -d Version="$version" \
-            -bindpath dist=dist \
+            -bindpath dist=dist -pdb "$RUNNER_TEMP/promptwizard.wixpdb" \
             -o "dist/PromptWizard-${GITHUB_REF_NAME}-x64.msi"
           ls -l dist/
 
