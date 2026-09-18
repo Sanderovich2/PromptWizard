@@ -307,12 +307,27 @@ async function copyDraft() {
 function downloadDraft() {
   const text = $("draft").textContent;
   if (!text) return;
-  const changes = Array.from(document.querySelectorAll("#changes li")).map((node) => "- " + node.textContent);
-  const body = "# PromptWizard\n\n" + text + (changes.length ? "\n\n## " + t("gui.changes_label") + "\n\n" + changes.join("\n") : "") + "\n";
-  const blob = new Blob([body], { type: "text/markdown;charset=utf-8" });
+  const format = $("export-format").value || "md";
+  const changes = Array.from(document.querySelectorAll("#changes li")).map((node) =>
+    node.textContent.replace(/^- /, "")
+  );
+  let body;
+  if (format === "json") {
+    body = JSON.stringify({ prompt: $("prompt").value, improved_prompt: text, changes: changes }, null, 2) + "\n";
+  } else if (format === "txt") {
+    body = text + (changes.length ? "\n\n" + t("gui.changes_label") + "\n" + changes.map((c) => "- " + c).join("\n") : "") + "\n";
+  } else {
+    body =
+      "# PromptWizard\n\n" +
+      text +
+      (changes.length ? "\n\n## " + t("gui.changes_label") + "\n\n" + changes.map((c) => "- " + c).join("\n") : "") +
+      "\n";
+  }
+  const types = { json: "application/json", txt: "text/plain", md: "text/markdown" };
+  const blob = new Blob([body], { type: (types[format] || "text/plain") + ";charset=utf-8" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = "promptwizard-" + ((outcome && outcome.id) || "draft") + ".md";
+  link.download = "promptwizard-" + ((outcome && outcome.id) || "draft") + "." + format;
   document.body.append(link);
   link.click();
   link.remove();
@@ -356,6 +371,15 @@ async function loadState(lang) {
 function wire() {
   $("primary").addEventListener("click", runPrimary);
   $("restart").addEventListener("click", restart);
+  $("load-file").addEventListener("click", () => $("file-input").click());
+  $("file-input").addEventListener("change", async (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    $("prompt").value = await file.text();
+    if (current === "prompt") $("primary").disabled = busy || !primaryIsUsable();
+    setStatus(file.name);
+    event.target.value = "";
+  });
   $("copy").addEventListener("click", copyDraft);
   $("download").addEventListener("click", downloadDraft);
   $("prompt").addEventListener("input", () => {

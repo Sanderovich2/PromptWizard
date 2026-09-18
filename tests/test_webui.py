@@ -48,6 +48,9 @@ def test_index_is_served(web):
     assert status == 200
     assert b"<!DOCTYPE html>" in body
     assert b"/assets/app.css" in body
+    assert b"logo.svg" in body
+    assert b"file-input" in body
+    assert b"export-format" in body
 
 
 def test_assets_are_served(web):

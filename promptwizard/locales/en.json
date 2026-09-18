@@ -92,7 +92,9 @@
     "presets": "Model preset",
     "preset_none": "Choose a preset",
     "preset_applied": "Preset applied: {name}",
-    "ask_questions": "Ask clarifying questions"
+    "ask_questions": "Ask clarifying questions",
+    "load_file": "Load from a file",
+    "export_format": "Format"
   },
   "models": {
     "header": "Models for {provider}",

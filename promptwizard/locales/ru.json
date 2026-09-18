@@ -92,7 +92,9 @@
     "presets": "Пресет модели",
     "preset_none": "Выбери пресет",
     "preset_applied": "Пресет применён: {name}",
-    "ask_questions": "Задавать уточняющие вопросы"
+    "ask_questions": "Задавать уточняющие вопросы",
+    "load_file": "Загрузить из файла",
+    "export_format": "Формат"
   },
   "models": {
     "header": "Модели для {provider}",

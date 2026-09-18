@@ -66,6 +66,10 @@
     </header>
 
     <section class="panel" id="panel-prompt">
+      <div class="panel-bar">
+        <button type="button" id="load-file" class="ghost" data-i18n="web.load_file"></button>
+        <input type="file" id="file-input" accept=".txt,.md,.markdown,.text" hidden>
+      </div>
       <textarea id="prompt" spellcheck="false" autocomplete="off"></textarea>
     </section>
 
@@ -87,6 +91,11 @@
       <div class="result-head">
         <span class="badge" id="mode"></span>
         <div class="result-actions">
+          <select id="export-format" aria-label="format">
+            <option value="md">md</option>
+            <option value="txt">txt</option>
+            <option value="json">json</option>
+          </select>
           <button type="button" id="copy" class="ghost" data-i18n="gui.copy"></button>
           <button type="button" id="download" class="ghost" data-i18n="gui.download"></button>
         </div>
