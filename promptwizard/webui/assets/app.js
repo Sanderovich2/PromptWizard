@@ -823,6 +823,10 @@ function wire() {
   });
 }
 
+function updateScheduleVisibility() {
+  $("schedule-row").hidden = $("theme").value !== "schedule";
+}
+
 function parseClock(value) {
   const match = /^([0-9]{1,2}):([0-9]{2})$/.exec(String(value || "").trim());
   if (!match) return null;
@@ -873,6 +877,7 @@ function fillSettings() {
   const settings = state.settings || {};
   applyTheme(settings.theme);
   $("theme").value = settings.theme || "light";
+  updateScheduleVisibility();
   const select = $("provider-select");
   select.textContent = "";
   Object.keys(settings.providers || {}).sort().forEach((name) => {
@@ -1074,7 +1079,10 @@ function wireSettings() {
   $("close-settings").addEventListener("click", () => {
     $("drawer").hidden = true;
   });
-  $("theme").addEventListener("change", (event) => applyTheme(event.target.value));
+  $("theme").addEventListener("change", (event) => {
+    applyTheme(event.target.value);
+    updateScheduleVisibility();
+  });
   $("theme-day-start").addEventListener("change", () => {
     state.settings = Object.assign({}, state.settings, { theme_day_start: $("theme-day-start").value });
     applyTheme($("theme").value);

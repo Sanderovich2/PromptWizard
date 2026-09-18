@@ -53,3 +53,11 @@ def test_the_schedule_theme_is_switchable():
     assert 'value="schedule"' in _asset("index.html")
     assert 'id="theme-day-start"' in _asset("index.html")
     assert 'id="theme-night-start"' in _asset("index.html")
+
+
+def test_the_schedule_fields_hide_until_the_schedule_theme_is_chosen():
+    html = _asset("index.html")
+    script = _asset("app.js")
+    assert 'id="schedule-row" hidden' in html
+    assert 'updateScheduleVisibility' in script
+    assert '.pair[hidden]' in _asset("app.css")
