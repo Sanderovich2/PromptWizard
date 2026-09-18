@@ -1,6 +1,6 @@
 from __future__ import annotations
 __all__ = ['__version__', 'main']
-__version__ = '0.2.0'
+__version__ = '0.3.0'
 __app_name__ = 'PromptWizard'
 
 def __getattr__(name: str):
