@@ -132,7 +132,14 @@
     "batch_item": "Prompt {index} of {total}",
     "batch_ready": "Done. Prompts processed: {count}.",
     "batch_running": "Processing {count} prompt(s)...",
-    "batch_empty": "Add at least one prompt."
+    "batch_empty": "Add at least one prompt.",
+    "state_ok": "available",
+    "state_no_key": "no API key",
+    "state_no_url": "no base url",
+    "state_no_model": "no model",
+    "state_unreachable": "not reachable",
+    "state_error": "check failed",
+    "provider_model_missing": "The selected model is not in the provider list."
   },
   "models": {
     "header": "Models for {provider}",
@@ -385,7 +392,17 @@
     "unavailable": "unavailable",
     "models": "Models: {models}",
     "no_key": "no API key",
-    "hint": "The default provider needs no key. Other providers need an API key in an environment variable (see README); --provider offline runs the rules only."
+    "hint": "The default provider needs no key. Other providers need an API key in an environment variable (see README); --provider offline runs the rules only.",
+    "state": {
+      "ok": "available",
+      "no_key": "no API key",
+      "no_url": "no base url",
+      "no_model": "no model",
+      "unreachable": "not reachable",
+      "error": "check failed"
+    },
+    "current": "Model: {model}",
+    "model_missing": "the selected model is not in the provider list"
   },
   "sessions": {
     "header": "Saved sessions",

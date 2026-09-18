@@ -186,18 +186,35 @@ def test_providers_endpoint_reports_every_provider(web, monkeypatch):
         return (
             ProviderStatus(name="offline", available=True, detail="stub ready", models=("deterministic-stub",)),
             ProviderStatus(name="groq", available=False, detail="no API key found", requires_key=True, key_present=False),
+            ProviderStatus(name="pollinations", available=True, detail="reachable, 1 model(s) listed", models=("openai-fast",)),
+            ProviderStatus(name="ollama", available=False, detail="ollama: cannot reach the provider ([WinError 10061])"),
         )
 
     monkeypatch.setattr(server_module, "describe_providers", fake)
     status, body = get(web, "/api/providers")
     payload = json.loads(body)
     assert status == 200
-    assert [entry["name"] for entry in payload["providers"]] == ["offline", "groq"]
-    assert payload["providers"][0]["available"] is True
-    assert payload["providers"][0]["models"] == ["deterministic-stub"]
-    assert payload["providers"][1]["available"] is False
-    assert payload["providers"][1]["requires_key"] is True
-    assert payload["providers"][1]["key_present"] is False
+    assert [entry["name"] for entry in payload["providers"]] == ["offline", "groq", "pollinations", "ollama"]
+
+    offline, groq, pollinations, ollama = payload["providers"]
+    assert offline["available"] is True
+    assert offline["state"] == "ok"
+    assert offline["models"] == ["deterministic-stub"]
+    assert offline["current"] == "deterministic-stub"
+    assert offline["model_ok"] is True
+
+    assert groq["available"] is False
+    assert groq["state"] == "no_key"
+    assert groq["requires_key"] is True
+    assert groq["key_present"] is False
+    assert groq["model_ok"] is True
+
+    assert pollinations["state"] == "ok"
+    assert pollinations["current"] == "openai"
+    assert pollinations["model_ok"] is False
+
+    assert ollama["state"] == "unreachable"
+    assert "cannot reach" in ollama["detail"]
 
 
 def test_the_providers_endpoint_survives_an_empty_result(web, monkeypatch):

@@ -15,7 +15,7 @@ from promptwizard.drafts import add_draft, clear_drafts as drop_all_drafts, list
 from promptwizard.errors import PromptWizardError
 from promptwizard.export import autosave_result
 from promptwizard.i18n import LANGUAGES, Translator, get_translator, load_catalog, normalize_language
-from promptwizard.llm.registry import describe_providers
+from promptwizard.llm.registry import describe_providers, status_state
 from promptwizard.pipeline import Session, SessionResult
 from promptwizard.settings import available_models, save_settings, settings_view
 from promptwizard.settings import open_config as open_settings_file
@@ -121,17 +121,24 @@ class AppState:
         return available_models(self.config, provider)
 
     def providers(self) -> dict[str, Any]:
-        return {'providers': [
-            {
-                'name': status.name,
-                'available': status.available,
-                'detail': status.detail,
-                'models': list(status.models),
-                'requires_key': status.requires_key,
-                'key_present': status.key_present,
-            }
-            for status in describe_providers(self.config)
-        ]}
+        entries: list[dict[str, Any]] = []
+        for status in describe_providers(self.config):
+            current = self.config.provider_settings(status.name).model
+            models = list(status.models)
+            entries.append(
+                {
+                    'name': status.name,
+                    'available': status.available,
+                    'state': status_state(status),
+                    'detail': status.detail,
+                    'models': models,
+                    'current': current,
+                    'model_ok': (not models) or (current in models),
+                    'requires_key': status.requires_key,
+                    'key_present': status.key_present,
+                }
+            )
+        return {'providers': entries}
 
     def update_settings(self, payload: dict[str, Any]) -> dict[str, Any]:
         updates: dict[str, Any] = {}

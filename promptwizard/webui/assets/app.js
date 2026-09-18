@@ -1009,25 +1009,55 @@ async function addCustomProvider() {
   }
 }
 
+function providerState(entry) {
+  if (entry.state) return entry.state;
+  return entry.available ? "ok" : "error";
+}
+
+function providerMeta(entry) {
+  const lines = [];
+  if (entry.current) lines.push(t("providers.current", { model: entry.current }));
+  if (entry.models && entry.models.length) {
+    lines.push(t("providers.models", { models: entry.models.slice(0, 8).join(", ") }));
+  }
+  return lines;
+}
+
+function providerDetail(entry) {
+  const state = providerState(entry);
+  if (state === "ok" || state === "no_key" || state === "no_model") return "";
+  return entry.detail || "";
+}
+
 function renderProviders(entries) {
   const list = $("provider-status");
   list.textContent = "";
   entries.forEach((entry) => {
+    const state = providerState(entry);
     const li = document.createElement("li");
-    li.className = "provider-row " + (entry.available ? "is-ok" : "is-off");
+    li.className = "provider-row " + (state === "ok" ? "is-ok" : "is-off");
     const head = document.createElement("span");
     head.className = "provider-head";
-    head.textContent =
-      entry.name + " — " + t(entry.available ? "providers.available" : "providers.unavailable");
-    const detail = document.createElement("span");
-    detail.className = "provider-detail";
-    detail.textContent = entry.detail || "";
-    li.append(head, detail);
-    if (entry.models && entry.models.length) {
-      const models = document.createElement("span");
-      models.className = "provider-models";
-      models.textContent = t("providers.models", { models: entry.models.slice(0, 8).join(", ") });
-      li.append(models);
+    head.textContent = entry.name + " — " + t("web.state_" + state);
+    li.append(head);
+    providerMeta(entry).forEach((line) => {
+      const meta = document.createElement("span");
+      meta.className = "provider-meta";
+      meta.textContent = line;
+      li.append(meta);
+    });
+    if (entry.models && entry.models.length && entry.model_ok === false) {
+      const warn = document.createElement("span");
+      warn.className = "provider-warn";
+      warn.textContent = t("web.provider_model_missing");
+      li.append(warn);
+    }
+    const detail = providerDetail(entry);
+    if (detail) {
+      const node = document.createElement("span");
+      node.className = "provider-detail";
+      node.textContent = detail;
+      li.append(node);
     }
     list.append(li);
   });

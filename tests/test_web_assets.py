@@ -55,6 +55,14 @@ def test_the_schedule_theme_is_switchable():
     assert 'id="theme-night-start"' in _asset("index.html")
 
 
+def test_the_provider_check_speaks_the_interface_language():
+    script = _asset("app.js")
+    assert '"web.state_"' in script
+    assert 'web.provider_model_missing' in script
+    assert 'providers.current' in script
+    assert 'providers.available' not in script
+
+
 def test_the_schedule_fields_hide_until_the_schedule_theme_is_chosen():
     html = _asset("index.html")
     script = _asset("app.js")

@@ -6,7 +6,9 @@ from promptwizard.llm.hosted import GroqProvider, OpenRouterProvider, Pollinatio
 from promptwizard.llm.offline import OfflineProvider
 from promptwizard.llm.ollama import OllamaProvider
 from promptwizard.llm.openai_compat import OpenAICompatibleProvider
-__all__ = ['build_provider', 'describe_providers', 'provider_class', 'provider_names']
+__all__ = ['STATES', 'build_provider', 'describe_providers', 'provider_class', 'provider_names', 'status_state']
+STATES: tuple[str, ...] = ('ok', 'no_key', 'no_url', 'no_model', 'unreachable', 'error')
+_UNREACHABLE_HINTS: tuple[str, ...] = ('cannot reach', 'unreachable', 'timed out', 'timeout', 'connection', 'refused', 'getaddrinfo', 'no route')
 _BY_NAME: dict[str, type[LLMProvider]] = {'pollinations': PollinationsProvider, 'ollama': OllamaProvider, 'gemini': GeminiProvider, 'groq': GroqProvider, 'openrouter': OpenRouterProvider, 'openai_compatible': OpenAICompatibleProvider, 'offline': OfflineProvider}
 _BY_KIND: dict[str, type[LLMProvider]] = {'ollama': OllamaProvider, 'gemini': GeminiProvider, 'openai_compatible': OpenAICompatibleProvider, 'offline': OfflineProvider}
 
@@ -27,6 +29,21 @@ def build_provider(config: Config, name: str | None=None) -> LLMProvider:
     if settings.name and settings.name != provider.name:
         provider.name = settings.name
     return provider
+
+def status_state(status: ProviderStatus) -> str:
+    if status.available:
+        return 'ok'
+    if status.requires_key and (not status.key_present):
+        return 'no_key'
+    detail = (status.detail or '').strip()
+    lowered = detail.lower()
+    if 'no base_url' in lowered:
+        return 'no_url'
+    if 'no model' in lowered:
+        return 'no_model'
+    if any((needle in lowered for needle in _UNREACHABLE_HINTS)):
+        return 'unreachable'
+    return 'error'
 
 def describe_providers(config: Config) -> tuple[ProviderStatus, ...]:
     statuses: list[ProviderStatus] = []

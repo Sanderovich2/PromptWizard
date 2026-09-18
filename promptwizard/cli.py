@@ -9,7 +9,7 @@ from promptwizard.config import Config
 from promptwizard.errors import GUIUnavailable, InputError, PromptWizardError
 from promptwizard.export import FORMATS, autosave_result, render, session_to_markdown, write_output
 from promptwizard.i18n import DEFAULT_LANGUAGE, LANGUAGES, Translator, detect_system_language, get_translator, normalize_language
-from promptwizard.llm.registry import build_provider, describe_providers
+from promptwizard.llm.registry import build_provider, describe_providers, status_state
 from promptwizard.pipeline import SessionResult, run
 from promptwizard.questions import Question
 from promptwizard.storage import get_session, list_sessions, save_session
@@ -240,8 +240,17 @@ def _cmd_run(args: argparse.Namespace, config: Config, translator: Translator, p
 def _cmd_providers(config: Config, translator: Translator, printer: Printer) -> int:
     printer.out(translator('providers.header'))
     for status in describe_providers(config):
-        state = translator('providers.available') if status.available else translator('providers.unavailable')
-        printer.out(translator('providers.row', name=status.name, status=state, detail=status.detail))
+        state = status_state(status)
+        printer.out(translator('providers.row', name=status.name, status=translator(f'providers.state.{state}'), detail='').rstrip())
+        current = config.provider_settings(status.name).model
+        if current:
+            line = translator('providers.current', model=current)
+            models = list(status.models)
+            if models and current not in models:
+                line = f"{line}. {translator('providers.model_missing')}"
+            printer.out('    ' + line)
+        if state in ('unreachable', 'error', 'no_url') and status.detail:
+            printer.out('    ' + status.detail)
         if status.models:
             printer.out('    ' + translator('providers.models', models=', '.join(status.models[:8])))
     printer.out(translator('providers.hint'))

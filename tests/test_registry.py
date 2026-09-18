@@ -5,7 +5,8 @@ from promptwizard.llm.hosted import GroqProvider, OpenRouterProvider, Pollinatio
 from promptwizard.llm.offline import OfflineProvider
 from promptwizard.llm.ollama import OllamaProvider
 from promptwizard.llm.openai_compat import OpenAICompatibleProvider
-from promptwizard.llm.registry import build_provider, provider_class, provider_names
+from promptwizard.llm.base import ProviderStatus
+from promptwizard.llm.registry import build_provider, provider_class, provider_names, status_state
 
 def test_known_names_resolve_to_their_adapter():
     assert provider_class('pollinations', 'openai_compatible') is PollinationsProvider
@@ -36,3 +37,34 @@ def test_config_only_provider_keeps_its_name_and_url(tmp_path):
     assert provider.name == 'cerebras'
     assert provider.base_url == 'https://api.cerebras.ai/v1'
     assert provider.model == 'llama3.1-8b'
+
+def test_a_keyless_provider_does_not_claim_to_need_a_key(tmp_path, monkeypatch):
+    config = Config.load(home=tmp_path, dotenv=False)
+    provider = build_provider(config, 'pollinations')
+    monkeypatch.setattr(provider, 'list_models', lambda: ('openai-fast',))
+    status = provider.status()
+    assert status.available is True
+    assert status.requires_key is False
+    assert status.key_present is False
+    assert status.models == ('openai-fast',)
+    assert status_state(status) == 'ok'
+
+def test_a_provider_with_a_key_reports_it(tmp_path, monkeypatch):
+    config = Config.load(home=tmp_path, dotenv=False)
+    config.providers['groq'].api_key = 'secret'
+    provider = build_provider(config, 'groq')
+    monkeypatch.setattr(provider, 'list_models', lambda: ('llama-3.3-70b-versatile',))
+    status = provider.status()
+    assert status.available is True
+    assert status.requires_key is True
+    assert status.key_present is True
+    assert status_state(status) == 'ok'
+
+def test_the_status_state_names_the_reason():
+    assert status_state(ProviderStatus(name='a', available=True, detail='reachable, 2 model(s) listed')) == 'ok'
+    assert status_state(ProviderStatus(name='a', available=False, detail='no API key found', requires_key=True, key_present=False)) == 'no_key'
+    assert status_state(ProviderStatus(name='a', available=False, detail='a: no base_url configured')) == 'no_url'
+    assert status_state(ProviderStatus(name='a', available=False, detail='a: no model configured')) == 'no_model'
+    assert status_state(ProviderStatus(name='a', available=False, detail='ollama: cannot reach the provider ([WinError 10061])')) == 'unreachable'
+    assert status_state(ProviderStatus(name='a', available=False, detail='something odd')) == 'error'
+    assert status_state(ProviderStatus(name='a', available=False, detail='')) == 'error'

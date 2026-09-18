@@ -73,9 +73,9 @@ class OpenAICompatibleProvider(LLMProvider):
         except Exception as exc:
             status = getattr(exc, 'status', None)
             if status == 404:
-                return ProviderStatus(name=self.name, available=True, detail='key present; provider does not expose /models', requires_key=True, key_present=True)
-            return ProviderStatus(name=self.name, available=False, detail=str(getattr(exc, 'message', exc)), requires_key=True, key_present=True)
-        return ProviderStatus(name=self.name, available=True, detail=f'reachable, {len(models)} model(s) listed', models=models, requires_key=True, key_present=True)
+                return ProviderStatus(name=self.name, available=True, detail='key present; provider does not expose /models', requires_key=self.requires_key, key_present=bool(self.api_key))
+            return ProviderStatus(name=self.name, available=False, detail=str(getattr(exc, 'message', exc)), requires_key=self.requires_key, key_present=bool(self.api_key))
+        return ProviderStatus(name=self.name, available=True, detail=f'reachable, {len(models)} model(s) listed', models=models, requires_key=self.requires_key, key_present=bool(self.api_key))
 
     @staticmethod
     def _extract_text(data: Mapping[str, Any]) -> str:
