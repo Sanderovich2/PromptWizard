@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import pathlib
 import urllib.error
 import urllib.request
 
@@ -175,3 +176,125 @@ def test_models_endpoint(web):
     assert data["provider"] == "offline"
     assert data["current"] == "deterministic-stub"
     assert "deterministic-stub" in data["models"]
+
+
+def test_providers_endpoint_reports_every_provider(web, monkeypatch):
+    from promptwizard.llm.base import ProviderStatus
+    import promptwizard.webui.server as server_module
+
+    def fake(config):
+        return (
+            ProviderStatus(name="offline", available=True, detail="stub ready", models=("deterministic-stub",)),
+            ProviderStatus(name="groq", available=False, detail="no API key found", requires_key=True, key_present=False),
+        )
+
+    monkeypatch.setattr(server_module, "describe_providers", fake)
+    status, body = get(web, "/api/providers")
+    payload = json.loads(body)
+    assert status == 200
+    assert [entry["name"] for entry in payload["providers"]] == ["offline", "groq"]
+    assert payload["providers"][0]["available"] is True
+    assert payload["providers"][0]["models"] == ["deterministic-stub"]
+    assert payload["providers"][1]["available"] is False
+    assert payload["providers"][1]["requires_key"] is True
+    assert payload["providers"][1]["key_present"] is False
+
+
+def test_the_providers_endpoint_survives_an_empty_result(web, monkeypatch):
+    import promptwizard.webui.server as server_module
+
+    def fake(config):
+        return ()
+
+    monkeypatch.setattr(server_module, "describe_providers", fake)
+    status, body = get(web, "/api/providers")
+    assert status == 200
+    assert json.loads(body)["providers"] == []
+
+
+def test_the_rewrite_response_carries_the_run_stats(web):
+    status, data = post(web, "/api/analyze", {"prompt": "Write something about cats", "lang": "en"})
+    assert status == 200
+    status, result = post(web, "/api/rewrite", {"id": data["id"], "answers": {}})
+    assert status == 200
+    assert "duration_ms" in result["stats"]
+    assert result["stats"]["tokens_total"] == 0
+    assert result["original_prompt"].startswith("Write something about cats")
+
+
+def test_drafts_are_collected_and_can_be_cleared(web):
+    status, body = get(web, "/api/drafts")
+    assert status == 200
+    assert json.loads(body)["drafts"] == []
+
+    status, _data = post(web, "/api/analyze", {"prompt": "Write something about cats", "lang": "en"})
+    assert status == 200
+    status, body = get(web, "/api/drafts")
+    assert json.loads(body)["drafts"] == ["Write something about cats"]
+
+    status, data = post(web, "/api/drafts", {"prompt": "Write something about cats"})
+    assert status == 200
+    assert data["drafts"] == []
+
+    post(web, "/api/analyze", {"prompt": "Write something about dogs", "lang": "en"})
+    status, data = post(web, "/api/drafts/clear", {})
+    assert status == 200
+    assert data["drafts"] == []
+
+
+def test_the_result_is_autosaved_into_the_configured_folder(web, tmp_path):
+    target = tmp_path / "out"
+    status, _data = post(web, "/api/settings", {"autosave_dir": str(target)})
+    assert status == 200
+    status, started = post(web, "/api/analyze", {"prompt": "Write something about cats", "lang": "en"})
+    assert status == 200
+    status, result = post(web, "/api/rewrite", {"id": started["id"], "answers": {}})
+    assert status == 200
+    assert result["autosaved"]
+    saved = pathlib.Path(result["autosaved"])
+    assert saved.exists()
+    assert saved.parent == target
+    assert "cats" in saved.read_text(encoding="utf-8")
+
+
+def test_autosave_stays_quiet_without_a_folder(web):
+    status, started = post(web, "/api/analyze", {"prompt": "Write something about cats", "lang": "en"})
+    assert status == 200
+    status, result = post(web, "/api/rewrite", {"id": started["id"], "answers": {}})
+    assert status == 200
+    assert result["autosaved"] == ""
+
+
+def test_the_update_endpoint_reports_the_release(web, monkeypatch):
+    import promptwizard.webui.server as server_module
+
+    def fake(current):
+        return {"current": "0.3.4", "latest": "9.9.9", "url": "https://example.test", "newer": True}
+
+    monkeypatch.setattr(server_module, "check_for_update", fake)
+    status, body = get(web, "/api/update")
+    data = json.loads(body)
+    assert status == 200
+    assert data["newer"] is True
+    assert data["latest"] == "9.9.9"
+
+
+def test_the_update_endpoint_survives_a_dead_network(web, monkeypatch):
+    import promptwizard.webui.server as server_module
+
+    def boom(current):
+        raise OSError("no network")
+
+    monkeypatch.setattr(server_module, "check_for_update", boom)
+    status, body = get(web, "/api/update")
+    data = json.loads(body)
+    assert status == 200
+    assert data["newer"] is False
+    assert data["current"]
+    assert "no network" in data["error"]
+
+
+def test_the_analyze_response_carries_the_translation_slot(web):
+    status, data = post(web, "/api/analyze", {"prompt": "Write something about cats", "lang": "en"})
+    assert status == 200
+    assert data["translation"] == ""

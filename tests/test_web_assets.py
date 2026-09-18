@@ -37,3 +37,19 @@ def test_motion_respects_reduced_motion():
     css = _asset("app.css")
     if "pw-fade" in css:
         assert "prefers-reduced-motion" in css
+
+
+def test_the_script_wires_the_comparison_and_the_drop_zone():
+    script = _asset("app.js")
+    assert '"diff-toggle"' in script
+    assert 'renderDiff' in script
+    assert '"dragover"' in script
+    assert '"drop"' in script
+
+
+def test_the_schedule_theme_is_switchable():
+    assert 'isNightNow' in _asset("app.js")
+    assert 'theme_day_start' in _asset("app.js")
+    assert 'value="schedule"' in _asset("index.html")
+    assert 'id="theme-day-start"' in _asset("index.html")
+    assert 'id="theme-night-start"' in _asset("index.html")

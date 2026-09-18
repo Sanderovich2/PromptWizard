@@ -79,3 +79,17 @@ def test_the_limit_is_validated(web):
     base, _tmp = web
     status, data = get(base, "/api/sessions?limit=abc")
     assert status == 400
+
+
+def test_an_opened_session_carries_the_original_prompt_and_stats(web):
+    base, _tmp = web
+    status, started = post(base, "/api/analyze", {"prompt": "Write something about cats", "lang": "en"})
+    assert status == 200
+    status, result = post(base, "/api/rewrite", {"id": started["id"], "answers": {}})
+    assert status == 200
+
+    status, record = get(base, "/api/sessions/" + result["id"])
+    assert status == 200
+    assert record["original_prompt"].startswith("Write something about cats")
+    assert record["stats"]["tokens_total"] == 0
+    assert record["stats"]["duration_ms"] >= 0

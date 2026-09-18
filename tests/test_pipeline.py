@@ -1,6 +1,6 @@
 from __future__ import annotations
 import json
-from promptwizard.pipeline import Session, run
+from promptwizard.pipeline import Session, SessionResult, run
 ANALYSIS = json.dumps({'language': 'en', 'score': 40, 'summary': 'weak', 'issues': [{'category': 'format', 'severity': 'high', 'title': 'No format', 'detail': 'add one'}]})
 QUESTIONS = json.dumps({'questions': [{'id': 'format', 'text': 'Which format?', 'why': 'because', 'kind': 'choice', 'options': ['table', 'list']}]})
 REWRITE = json.dumps({'improved_prompt': 'Task:\nDo the thing', 'changes': [{'what': 'Added format', 'why': 'so it is unambiguous'}], 'language': 'en'})
@@ -74,3 +74,103 @@ def test_result_round_trips_through_json(config, translator, make_provider):
     assert restored.analysis.issues == result.analysis.issues
     assert restored.rewrite is not None
     assert restored.rewrite.improved_prompt == result.rewrite.improved_prompt
+
+def test_custom_system_prompts_reach_the_provider(config, translator, make_provider):
+    provider = make_provider([ANALYSIS, QUESTIONS, REWRITE])
+    config.system_analyzer = 'Always mention the risk section.'
+    config.system_rewriter = 'Prefer short bullet lists.'
+    session = Session(config, translator, 'Do the thing', provider=provider)
+    session.analyze()
+    session.make_questions()
+    session.run_rewrite()
+    assert 'Always mention the risk section.' in provider.requests[0].system
+    assert provider.requests[0].system.startswith('You are PromptWizard')
+    assert 'Prefer short bullet lists.' in provider.requests[2].system
+
+def test_the_run_is_measured_and_counted(config, translator, make_provider):
+    provider = make_provider([ANALYSIS, QUESTIONS, REWRITE])
+    result = run(config, translator, 'Do the thing', provider=provider)
+    assert result.tokens_in > 0
+    assert result.tokens_out > 0
+    assert result.duration_ms >= 0
+    payload = result.to_dict()
+    assert payload['tokens_in'] == result.tokens_in
+    assert payload['tokens_out'] == result.tokens_out
+    assert payload['duration_ms'] == result.duration_ms
+
+def test_old_records_without_the_stats_still_load(config, translator, make_provider):
+    provider = make_provider([ANALYSIS, QUESTIONS, REWRITE])
+    payload = run(config, translator, 'Do the thing', provider=provider).to_dict()
+    for key in ('duration_ms', 'tokens_in', 'tokens_out'):
+        payload.pop(key)
+    restored = SessionResult.from_dict(payload)
+    assert restored.duration_ms == 0
+    assert restored.tokens_in == 0
+    assert restored.tokens_out == 0
+    assert restored.rewrite is not None
+
+def test_the_offline_run_never_burns_tokens(config, translator):
+    config.provider = 'offline'
+    result = run(config, translator, 'Do the thing')
+    assert result.tokens_in == 0
+    assert result.tokens_out == 0
+
+TRANSLATION = json.dumps({'translated_prompt': 'Write something about cats', 'language': 'en'})
+
+def test_translation_runs_before_the_analysis(config, translator, make_provider):
+    provider = make_provider([TRANSLATION, ANALYSIS, QUESTIONS, REWRITE])
+    config.lang = 'en'
+    config.translate_prompt = True
+    session = Session(config, translator, 'Напиши что-нибудь про котов', provider=provider)
+    session.analyze()
+    assert session.translated_prompt == 'Write something about cats'
+    assert session.analyzed_prompt == 'Write something about cats'
+    assert 'Напиши' in provider.requests[0].prompt
+    assert 'Write something about cats' in provider.requests[1].prompt
+
+
+def test_translation_stays_off_by_default(config, translator, make_provider):
+    provider = make_provider([ANALYSIS, QUESTIONS, REWRITE])
+    config.lang = 'en'
+    session = Session(config, translator, 'Напиши что-нибудь про котов', provider=provider)
+    session.analyze()
+    assert session.translated_prompt is None
+    assert len(provider.requests) == 1
+
+
+def test_translation_is_skipped_for_the_same_language(config, translator, make_provider):
+    provider = make_provider([ANALYSIS, QUESTIONS, REWRITE])
+    config.translate_prompt = True
+    session = Session(config, translator, 'Напиши что-нибудь про котов', provider=provider)
+    session.analyze()
+    assert not session.translated_prompt
+    assert len(provider.requests) == 1
+
+
+def test_a_failed_translation_falls_back_to_the_original(config, translator, make_provider):
+    provider = make_provider(['not json', ANALYSIS, QUESTIONS, REWRITE])
+    config.lang = 'en'
+    config.translate_prompt = True
+    session = Session(config, translator, 'Напиши что-нибудь про котов', provider=provider)
+    analysis = session.analyze()
+    assert not session.translated_prompt
+    assert session.analyzed_prompt == 'Напиши что-нибудь про котов'
+    assert analysis.issues
+
+
+def test_the_translation_lands_in_the_saved_result(config, translator, make_provider):
+    provider = make_provider([TRANSLATION, ANALYSIS, QUESTIONS, REWRITE])
+    config.lang = 'en'
+    config.translate_prompt = True
+    result = run(config, translator, 'Напиши что-нибудь про котов', provider=provider)
+    assert result.translated_prompt == 'Write something about cats'
+    assert result.to_dict()['translated_prompt'] == 'Write something about cats'
+
+
+def test_the_offline_provider_never_translates(config, translator):
+    config.provider = 'offline'
+    config.lang = 'en'
+    config.translate_prompt = True
+    result = run(config, translator, 'Напиши что-нибудь про котов')
+    assert result.translated_prompt == ''
+    assert result.rewrite is not None
