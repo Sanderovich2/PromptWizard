@@ -439,6 +439,22 @@ async function openSession(id) {
   }
 }
 
+function wireSettingsSafe() {
+  try {
+    wireSettings();
+  } catch (error) {
+    console.error("settings wiring failed", error);
+  }
+}
+
+function wireSafe() {
+  try {
+    wire();
+  } catch (error) {
+    console.error("wiring failed", error);
+  }
+}
+
 function wire() {
   $("primary").addEventListener("click", runPrimary);
   $("restart").addEventListener("click", restart);
@@ -684,7 +700,6 @@ function wireSettings() {
   });
 }
 
-wireSettings();
-wire();
-loadState("ru");
-setStep("prompt");
+wireSettingsSafe();
+wireSafe();
+loadState("ru").then(() => setStep("prompt"), () => setStep("prompt"));
