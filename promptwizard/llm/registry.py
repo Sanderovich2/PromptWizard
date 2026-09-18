@@ -10,7 +10,7 @@ from __future__ import annotations
 from promptwizard.config import PROVIDER_NAMES, Config, ProviderSettings
 from promptwizard.llm.base import LLMProvider, ProviderStatus
 from promptwizard.llm.gemini import GeminiProvider
-from promptwizard.llm.hosted import GroqProvider, OpenRouterProvider
+from promptwizard.llm.hosted import GroqProvider, OpenRouterProvider, PollinationsProvider
 from promptwizard.llm.offline import OfflineProvider
 from promptwizard.llm.ollama import OllamaProvider
 from promptwizard.llm.openai_compat import OpenAICompatibleProvider
@@ -24,6 +24,7 @@ __all__ = [
 
 #: Known provider names mapped to their adapter.
 _BY_NAME: dict[str, type[LLMProvider]] = {
+    "pollinations": PollinationsProvider,
     "ollama": OllamaProvider,
     "gemini": GeminiProvider,
     "groq": GroqProvider,

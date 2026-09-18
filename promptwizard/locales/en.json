@@ -158,12 +158,12 @@
   },
   "providers": {
     "header": "Providers",
-    "row": "{name:-12} {status}  {detail}",
+    "row": "{name:<12} {status}  {detail}",
     "available": "available",
     "unavailable": "unavailable",
     "models": "Models: {models}",
     "no_key": "no API key",
-    "hint": "Set an API key with an environment variable (see README) or use --provider offline to run without an LLM."
+    "hint": "The default provider needs no key. Other providers need an API key in an environment variable (see README); --provider offline runs the rules only."
   },
   "sessions": {
     "header": "Saved sessions",

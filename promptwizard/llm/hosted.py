@@ -12,7 +12,7 @@ from typing import Mapping
 
 from promptwizard.llm.openai_compat import OpenAICompatibleProvider
 
-__all__ = ["GroqProvider", "OpenRouterProvider"]
+__all__ = ["GroqProvider", "OpenRouterProvider", "PollinationsProvider"]
 
 
 class GroqProvider(OpenAICompatibleProvider):
@@ -36,3 +36,18 @@ class OpenRouterProvider(OpenAICompatibleProvider):
         "HTTP-Referer": "https://github.com/Sanderovich2/PromptWizard",
         "X-Title": "PromptWizard",
     }
+
+
+class PollinationsProvider(OpenAICompatibleProvider):
+    """Keyless community endpoint (``text.pollinations.ai``).
+
+    Needs no account, no key and no local server, so it is the default: a fresh
+    install produces a real rewrite before anything is configured.  Being free
+    and community-run, it may rate-limit; the pipeline then degrades to the
+    deterministic template and the user is told why.
+    """
+
+    name = "pollinations"
+    kind = "openai_compatible"
+    requires_key = False
+    api_key_env = ""

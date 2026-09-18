@@ -135,9 +135,23 @@ def test_version_command(capsys):
     assert "PromptWizard" in capsys.readouterr().out
 
 
-def test_providers_command(tmp_path, capsys):
-    assert main(["providers", "--lang", "en", "--home", str(tmp_path), "--timeout", "0.5"]) == 0
-    assert "Providers" in capsys.readouterr().out
+def test_providers_command(tmp_path, capsys, monkeypatch):
+    """The command renders what the registry reports; probing itself is I/O."""
+    import promptwizard.cli as cli
+    from promptwizard.llm.base import ProviderStatus
+
+    monkeypatch.setattr(
+        cli,
+        "describe_providers",
+        lambda config: (
+            ProviderStatus(name="pollinations", available=True, detail="keyless, reachable"),
+            ProviderStatus(name="groq", available=False, detail="no API key found", requires_key=True),
+        ),
+    )
+    assert main(["providers", "--lang", "en", "--home", str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert "Providers" in out
+    assert "pollinations" in out
 
 
 def test_config_init_creates_the_file(tmp_path, capsys):

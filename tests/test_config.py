@@ -13,9 +13,26 @@ from promptwizard.errors import ConfigError
 
 def test_defaults_come_from_the_builtin_table(tmp_path):
     config = Config.load(home=tmp_path, dotenv=False)
-    assert config.provider == "ollama"
+    assert config.provider == "pollinations"
     assert config.max_questions == 6
-    assert {"ollama", "gemini", "groq", "openrouter", "openai_compatible", "offline"} <= set(config.providers)
+    assert {
+        "pollinations",
+        "ollama",
+        "gemini",
+        "groq",
+        "openrouter",
+        "openai_compatible",
+        "offline",
+    } <= set(config.providers)
+
+
+def test_the_default_provider_needs_no_key(tmp_path):
+    """A fresh install must work with no configuration at all."""
+    config = Config.load(home=tmp_path, dotenv=False)
+    settings = config.provider_settings()
+    assert settings.base_url == "https://text.pollinations.ai/openai"
+    assert settings.api_key_env == ""
+    assert config.resolve_api_key() is None
 
 
 def test_config_file_overrides_defaults(tmp_path):

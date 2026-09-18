@@ -2,8 +2,9 @@
 
 Analyze a prompt, ask the questions that are actually missing, and rewrite it into something a
 model understands better. Runs on Windows, Linux and macOS, with a CLI (+ interactive mode) and an
-optional tkinter window, using **free LLM providers only** — a local Ollama, or the free tiers of
-Gemini, Groq and OpenRouter — and a deterministic no-LLM mode when nothing is configured.
+optional tkinter window, using **free LLM providers only**. It works with **no API key and no
+setup** out of the box, and can also use a local Ollama, the free tiers of Gemini, Groq and
+OpenRouter, or a deterministic no-LLM mode.
 
 ```
 $ promptwizard "write about our product"
@@ -105,12 +106,33 @@ Without an installed console script, use `python -m promptwizard ...` or the lau
 
 | Provider | Kind | Key | Where to get it |
 |---|---|---|---|
+| `pollinations` | keyless community endpoint (**default**) | none | works immediately, no account |
 | `ollama` | local, no key by default | — | [ollama.com](https://ollama.com) — `ollama pull llama3.2` |
 | `gemini` | Google AI free tier | `GEMINI_API_KEY` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
 | `groq` | free tier | `GROQ_API_KEY` | [console.groq.com/keys](https://console.groq.com/keys) |
 | `openrouter` | models with the `:free` suffix | `OPENROUTER_API_KEY` | [openrouter.ai/keys](https://openrouter.ai/keys) |
 | `offline` | deterministic, no LLM at all | — | built in |
 | `openai_compatible` | any other free OpenAI-compatible tier | `OPENAI_API_KEY` | your provider |
+
+### No keys at all
+
+`pollinations` is the default provider: a keyless, community-run endpoint. After install,
+`promptwizard "..."` produces a real rewrite with no account, no key and no local server.
+
+```bash
+promptwizard "write about our product"    # just works
+promptwizard providers                     # shows it as reachable
+```
+
+It is free, therefore rate-limited. When it pushes back, the run does not fail: it degrades to the
+deterministic template and says why, and you can switch provider for the next run:
+
+| Want | Command |
+|---|---|
+| keyless (default) | `promptwizard "..."` |
+| fully local, no network | `ollama pull llama3.2` then `promptwizard --provider ollama "..."` |
+| a specific free tier | `promptwizard --provider groq --model llama-3.3-70b-versatile "..."` |
+| no LLM at all (rules only) | `promptwizard --provider offline "..."` |
 
 Pick one per run:
 
@@ -162,7 +184,7 @@ Precedence, lowest to highest: built-in defaults → `config.json` → `.env` �
 ```json
 {
   "lang": "ru",
-  "provider": "groq",
+  "provider": "pollinations",
   "model": "llama-3.3-70b-versatile",
   "temperature": 0.3,
   "max_tokens": 1200,

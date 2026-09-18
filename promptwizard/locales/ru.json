@@ -158,12 +158,12 @@
   },
   "providers": {
     "header": "Провайдеры",
-    "row": "{name:-12} {status}  {detail}",
+    "row": "{name:<12} {status}  {detail}",
     "available": "доступен",
     "unavailable": "недоступен",
     "models": "Модели: {models}",
     "no_key": "нет API-ключа",
-    "hint": "Задай API-ключ переменной окружения (см. README) или запусти без LLM: --provider offline."
+    "hint": "Провайдер по умолчанию работает без ключа. Другим провайдерам нужен API-ключ в переменной окружения (см. README); --provider offline работает только на правилах."
   },
   "sessions": {
     "header": "Сохранённые сессии",

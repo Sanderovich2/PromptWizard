@@ -45,3 +45,21 @@ def test_translator_formats_and_falls_back_to_the_key():
 def test_translator_returns_the_template_when_a_placeholder_is_missing():
     translator = get_translator("en")
     assert translator("run.score") == "Clarity score: {score}/100"
+
+
+def test_every_catalog_template_has_a_valid_format_spec():
+    """A malformed spec (for example a sign on a string) silently prints raw text."""
+
+    class AnyValue(dict):
+        def __missing__(self, key):
+            return "v"
+
+    for lang in ("ru", "en"):
+        for key, template in load_catalog(lang).items():
+            if "{" not in template:
+                continue
+            try:
+                rendered = template.format_map(AnyValue())
+            except (ValueError, KeyError, IndexError) as exc:
+                raise AssertionError(f"{lang}:{key} has an invalid format spec: {exc}") from exc
+            assert "{" not in rendered, f"{lang}:{key} left a placeholder unrendered: {rendered!r}"

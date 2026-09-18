@@ -43,6 +43,15 @@ DEFAULT_HOME = Path.home() / ".promptwizard"
 #: table is the single place to edit them (or override per user in config.json /
 #: ``--model``).  See README "Providers" for how to list what your account has.
 PROVIDER_DEFAULTS: dict[str, dict[str, str]] = {
+    # Keyless: no account, no key, no local server.  That is why it is the
+    # default.  It is a community-run free endpoint, so it can rate-limit; the
+    # run then degrades to the deterministic template and says so.
+    "pollinations": {
+        "base_url": "https://text.pollinations.ai/openai",
+        "model": "openai",
+        "api_key_env": "",
+        "kind": "openai_compatible",
+    },
     "ollama": {
         "base_url": "http://localhost:11434",
         "model": "llama3.2",
@@ -167,7 +176,7 @@ class Config:
 
     home: Path = DEFAULT_HOME
     lang: str = DEFAULT_LANGUAGE
-    provider: str = "ollama"
+    provider: str = "pollinations"
     model: str = ""
     temperature: float = 0.3
     max_tokens: int = 1200
