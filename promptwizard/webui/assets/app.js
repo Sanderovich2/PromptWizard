@@ -641,7 +641,27 @@ function wireSettings() {
     }
   });
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") $("drawer").hidden = true;
+    if (event.key === "Escape") {
+      $("drawer").hidden = true;
+      return;
+    }
+    if (!(event.ctrlKey || event.metaKey)) return;
+    if (event.key === "o" || event.key === "O") {
+      event.preventDefault();
+      $("file-input").click();
+      return;
+    }
+    if (event.key === "s" || event.key === "S") {
+      if ($("draft").textContent) {
+        event.preventDefault();
+        downloadDraft();
+      }
+      return;
+    }
+    if (event.key === ",") {
+      event.preventDefault();
+      $("drawer").hidden = false;
+    }
   });
 }
 
