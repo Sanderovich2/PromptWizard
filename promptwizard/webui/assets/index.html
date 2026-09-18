@@ -39,6 +39,9 @@
       <button type="button" class="step" data-goto="result" disabled>
         <span class="no">4</span><span data-i18n="gui.tab_result"></span>
       </button>
+      <button type="button" class="step" data-goto="sessions">
+        <span class="no">&#9776;</span><span data-i18n="web.sessions"></span>
+      </button>
     </nav>
 
     <div class="rail-foot">
@@ -103,6 +106,11 @@
       <pre class="draft" id="draft"></pre>
       <h3 class="sub" data-i18n="gui.changes_label"></h3>
       <ol class="changes" id="changes"></ol>
+    </section>
+
+    <section class="panel" id="panel-sessions" hidden>
+      <ol class="changes" id="session-list"></ol>
+      <p class="empty" id="sessions-empty" hidden data-i18n="web.sessions_empty"></p>
     </section>
 
     <div class="notice" id="notice" hidden>

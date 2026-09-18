@@ -132,6 +132,44 @@ class AppState:
         path = open_settings_file(self.config, launch=bool(launch))
         return {'path': str(path), 'settings': settings_view(self.config)}
 
+    def sessions(self, limit: int=30) -> dict[str, Any]:
+        from promptwizard.storage import list_sessions
+        records = list_sessions(self.config, max(1, min(int(limit), 200)))
+        return {'sessions': [
+            {
+                'id': record.get('id', ''),
+                'finished_at': record.get('finished_at', ''),
+                'provider': record.get('provider', ''),
+                'model': record.get('model', ''),
+                'mode': record.get('mode', ''),
+                'language': record.get('prompt_language', ''),
+                'score': (record.get('analysis') or {}).get('score', 0),
+                'prompt': record.get('original_prompt', '')[:160],
+            }
+            for record in records
+        ]}
+
+    def session(self, identifier: str) -> dict[str, Any]:
+        from promptwizard.storage import get_session
+        record = get_session(self.config, identifier)
+        if record is None:
+            raise LookupError(identifier)
+        rewrite = record.get('rewrite') or {}
+        return {
+            'id': record.get('id', ''),
+            'warnings': record.get('warnings', []),
+            'provider': record.get('provider', ''),
+            'model': record.get('model', ''),
+            'language': record.get('prompt_language', ''),
+            'saved': '',
+            'mode': record.get('mode', ''),
+            'rewrite': {
+                'improved_prompt': rewrite.get('improved_prompt', ''),
+                'changes': rewrite.get('changes', []),
+                'language': rewrite.get('language', ''),
+            },
+        }
+
     def set_autostart(self, enabled: Any=None) -> dict[str, Any]:
         from promptwizard.autostart import set_enabled, state
         if enabled is None:
@@ -245,6 +283,18 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(self.app.models(requested))
             except PromptWizardError as exc:
                 return self._send_json(_settings_error(self.app.translator, exc), 400)
+        if parsed.path == '/api/sessions':
+            limit = parse_qs(parsed.query).get('limit', ['30'])[0]
+            try:
+                return self._send_json(self.app.sessions(int(limit)))
+            except ValueError:
+                return self._send_json({'error': {'message': 'limit must be a number'}}, 400)
+        if parsed.path.startswith('/api/sessions/'):
+            identifier = parsed.path[len('/api/sessions/'):]
+            try:
+                return self._send_json(self.app.session(identifier))
+            except LookupError:
+                return self._send_json({'error': {'message': 'unknown session'}}, 404)
         return self._send_json({'error': {'message': 'not found'}}, 404)
 
     def do_POST(self) -> None:

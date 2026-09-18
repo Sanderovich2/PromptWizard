@@ -94,7 +94,11 @@
     "preset_applied": "Пресет применён: {name}",
     "ask_questions": "Задавать уточняющие вопросы",
     "load_file": "Загрузить из файла",
-    "export_format": "Формат"
+    "export_format": "Формат",
+    "sessions": "Сессии",
+    "sessions_hint": "Каждый запуск сохраняется; открой любой, чтобы увидеть его переписку",
+    "sessions_empty": "Сохранённых запусков пока нет.",
+    "opened_session": "Открыта сессия {id}"
   },
   "models": {
     "header": "Модели для {provider}",

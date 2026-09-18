@@ -7,6 +7,7 @@ const STEPS = [
   { id: "analysis", title: "gui.issues_label", hint: "gui.analysis_hint", action: "gui.rewrite" },
   { id: "questions", title: "gui.questions_label", hint: "gui.questions_hint", action: "gui.rewrite" },
   { id: "result", title: "gui.result_label", hint: "gui.result_hint", action: "" },
+  { id: "sessions", title: "web.sessions", hint: "web.sessions_hint", action: "" },
 ];
 
 const state = { lang: "ru", languages: ["ru", "en"], version: "", provider: "", model: "", strings: {} };
@@ -91,7 +92,7 @@ function renderHead() {
   $("step-hint").textContent = t(meta.hint);
   const primary = $("primary");
   primary.textContent = meta.action ? t(meta.action) : t("gui.restart");
-  primary.hidden = current === "result";
+  primary.hidden = current === "result" || current === "sessions";
   primary.disabled = busy || !primaryIsUsable();
   $("restart").hidden = !session;
 }
@@ -106,10 +107,11 @@ function setStep(next) {
     node.disabled = !stepEnabled(node.dataset.goto);
   });
   renderHead();
+  if (next === "sessions") loadSessions();
 }
 
 function stepEnabled(id) {
-  if (id === "prompt") return true;
+  if (id === "prompt" || id === "sessions") return true;
   if (id === "analysis" || id === "questions") return Boolean(session);
   return Boolean(outcome);
 }
@@ -366,6 +368,56 @@ async function loadState(lang) {
   if (session) renderAnalysis(session);
   if (session) renderQuestions(session.questions || []);
   if (outcome) renderResult(outcome);
+}
+
+async function loadSessions() {
+  const list = $("session-list");
+  list.textContent = "";
+  try {
+    const response = await fetch("/api/sessions?limit=40");
+    const data = await response.json();
+    (data.sessions || []).forEach((record) => {
+      const li = document.createElement("li");
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "session-row";
+      const head = document.createElement("span");
+      head.className = "session-meta";
+      head.textContent =
+        record.finished_at.slice(0, 19).replace("T", " ") +
+        "  ·  " + record.provider + "/" + record.model +
+        "  ·  " + t("run.score", { score: record.score });
+      const body = document.createElement("span");
+      body.className = "session-prompt";
+      body.textContent = record.prompt;
+      button.append(head, body);
+      button.addEventListener("click", () => openSession(record.id));
+      li.append(button);
+      list.append(li);
+    });
+    $("sessions-empty").hidden = (data.sessions || []).length > 0;
+  } catch (error) {
+    setStatus(error.message);
+  }
+}
+
+async function openSession(id) {
+  try {
+    const response = await fetch("/api/sessions/" + encodeURIComponent(id));
+    if (!response.ok) throw new Error(t("gui.error"));
+    const data = await response.json();
+    outcome = data;
+    session = null;
+    $("prompt").value = "";
+    renderResult(data);
+    document.querySelectorAll(".step").forEach((node) => {
+      node.disabled = !stepEnabled(node.dataset.goto);
+    });
+    setStep("result");
+    setStatus(t("web.opened_session", { id: data.id }));
+  } catch (error) {
+    setStatus(error.message);
+  }
 }
 
 function wire() {

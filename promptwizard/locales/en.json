@@ -94,7 +94,11 @@
     "preset_applied": "Preset applied: {name}",
     "ask_questions": "Ask clarifying questions",
     "load_file": "Load from a file",
-    "export_format": "Format"
+    "export_format": "Format",
+    "sessions": "Sessions",
+    "sessions_hint": "Every run is saved; open one to see its rewrite",
+    "sessions_empty": "No sessions saved yet.",
+    "opened_session": "Opened session {id}"
   },
   "models": {
     "header": "Models for {provider}",
