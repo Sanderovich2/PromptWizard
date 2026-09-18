@@ -75,10 +75,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          dotnet tool install --global wix
+          dotnet tool install --global wix --version 5.*
           export PATH="$PATH:$HOME/.dotnet/tools"
           version="${GITHUB_REF_NAME#v}"
-          wix build installer/PromptWizard.wxs \
+          wix build installer/promptwizard.wxs \
             -d Version="$version" \
             -bindpath dist=dist \
             -o "dist/PromptWizard-${GITHUB_REF_NAME}-x64.msi"
